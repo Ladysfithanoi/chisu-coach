@@ -27,5 +27,11 @@ export async function GET(_req: NextRequest) {
     orderBy: { createdAt: "asc" },
   });
 
-  return NextResponse.json({ users });
+  const serialized = users.map((u: any) => ({
+    ...u,
+    createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
+    updatedAt: u.updatedAt ? new Date(u.updatedAt).toISOString() : new Date().toISOString(),
+  }));
+
+  return NextResponse.json({ users: serialized });
 }
