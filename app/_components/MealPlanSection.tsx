@@ -464,6 +464,7 @@ export default function MealPlanSection({ result }: { result: NutritionResult })
   const handleGenerateAI = useCallback(async () => {
     // Hard lock: ref is synchronous — immune to React batching delays
     if (aiInFlight.current) return;
+    console.log("🚀 CHỈ KÍCH HOẠT KHI BẤM NÚT TẠO THỰC ĐƠN!");
     aiInFlight.current = true;
     setAiLoading(true);
     setAiError(null);
