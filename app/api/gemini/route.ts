@@ -11,7 +11,7 @@ const API_KEYS: string[] = process.env.GEMINI_API_KEYS
   : [];
 
 const GEMINI_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
 // HTTP status codes that are transient — skip to next key instead of failing hard
 function isRetryableStatus(status: number): boolean {

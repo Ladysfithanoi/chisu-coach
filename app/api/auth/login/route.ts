@@ -34,15 +34,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const sessionId = crypto.randomUUID();
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { currentSessionToken: sessionId },
+    });
+
     const token = await signSession({
       sub: user.id,
       email: user.email,
       role: user.role,
+      sid: sessionId,
     });
 
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    const response = NextResponse.json({ ok: true });
+    const response = NextResponse.json({ ok: true, role: user.role });
     response.cookies.set(COOKIE_NAME, token, {
       httpOnly: true,
       sameSite: "lax",

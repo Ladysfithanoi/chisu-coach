@@ -1,0 +1,967 @@
+
+
+====PAGE 14====
+[y740] Tªn thùc phÈm (Vietnamese):G¹o nÕp c¸iSTT:1
+[y728] Tªn tiÕng Anh (English):Glutinous rice, milled
+[y724] M· sè:1001
+[y712] Thμnh phÇn dinh d−ìng trong 100g phÇn ¨n ®−îc (100 grams edible portion)Th¶i bá (%):0.0
+[y688] Thμnh phÇn dinh d−ìngĐVHμm lượngTLTKThμnh phÇn dinh d−ìngĐVHμm lượngTLTK
+[y680] (Nutrients)(Unit)(Value)(Source)(Nutrients)(Unit)(Value)(Source)
+[y664] Nước(Water)g14.01Tổng sốisoflavon(Total isoflavone)mg-
+[y652] Năng lượng(Energy)KCal344Daidzeinmg-
+[y636] KJ1441Genisteinmg-
+[y624] Proteing8.61Glycetinmg-
+[y608] Lipid(Fat)g1.51Tổng sốacid béo nog-
+[y596] Glucid(Carbohydrate)g74.51(Total saturated fatty acid)
+[y580] Celluloza(Fiber)g0.61Palmitic (C16:0)g-
+[y568] Tro(Ash)g0.81Margaric (C17:0)g-
+[y552] Đường tổng số(Sugar)g-Stearic (C18:0)g-
+[y540] Galactoza(Galactose)Arachidic (C20:0)
+[y536] g-g-
+[y524] Maltoza(Maltose)g-Behenic (22:0)g-
+[y508] Lactoza(Lactose)g-Lignoceric (C24:0)g-
+[y496] Fructoza(Fructose)g-TS acid béo không no 1 nốiđôig-
+[y480] Glucoza(Glucose)g-(Total monounsaturated fatty acid)
+[y468] Sacaroza(Sucrose)g-Myristoleic (C14:1)g-
+[y452] Calci(Calcium)mg321Palmitoleic (C16:1)g-
+[y440] Sắt(Iron)mg1.201Oleic (C18:1)g-
+[y424] Magiê(Magnesium)mg171TS acid béo không no nhiều nốiđôig-
+[y412] Mangan(Manganese)mg1.1001(Total polyunsaturated fatty acid)-
+[y396] Phospho(Phosphorous)mg981Linoleic (C18:2 n6)g-
+[y384] Kali(Potassium)mg2821Linolenic (C18:2 n3)g-
+[y368] Natri(Sodium)mg31Arachidonic (C20:4)g-
+[y356] Kẽm(Zinc)mg2.201Eicosapentaenoic (C20:5 n3)g-
+[y340] Đồng(Copper)μg2801Docosahexaenoic (C22:6 n3)g-
+[y328] Selen(Selenium)μg-TS acid béo trans(Total trans fatty acid)g-
+[y312] Vitamin C(Ascorbic acid)mg01Cholesterolmg02
+[y300] Vitamin B1(Thiamine)mg0.141Phytosterolmg-
+[y284] Vitamin B2(Riboflavin)mg0.062Lysinmg2072
+[y272] Vitamin PP(Niacin)mg2.42Methioninmg662
+[y256] Vitamin B5(Pantothenic acid)mg-Tryptophanmg-
+[y244] Vitamin B6(Pyridoxine)mg-Phenylalaninmg2292
+[y228] Folat(Folate)μg-Threoninmg1772
+[y216] Vitamin B9(Folic acid)μg-Valinmg3172
+[y200] Vitamin H(Biotin)μg-Leucinmg5312
+[y188] Vitamin B12(Cyanocobalamine)μg-Isoleucinmg2222
+[y172] Vitamin A(Retinol)μg01Argininmg4352
+[y160] Vitamin D(Calciferol)μg0.001Histidinmg1332
+[y144] Vitamin E(Alpha-tocopherol)mg-Cystinmg962
+[y132] Vitamin K(Phylloquinone)μg-Tyrosinmg1112
+[y116] Beta-carotenμg01Alaninmg3472
+[y104] Alpha-carotenμg01Acid asparticmg4432
+[y88] Beta-cryptoxanthinμg01Acid glutamicmg12102
+[y76] Lycopenμg01Glycinmg2812
+[y60] Lutein + Zeaxanthinμg01Prolinmg3762
+[y48] PPurinimg-SSerinimg30930922
+[y16] 1
+
+
+====PAGE 15====
+[y736] Tªn thùc phÈm (Vietnamese):STT:2
+[y732] G¹o nÕp m¸y(Lo¹i th−êng)
+[y720] Tªn tiÕng Anh (English):Glutinous rice, milledM· sè:1002
+[y708] Thμnh phÇn dinh d−ìng trong 100g phÇn ¨n ®−îc (100 grams edible portion)Th¶i bá (%):
+[y704] 0.0
+[y684] Thμnh phÇn dinh d−ìngĐVHμm lượngTLTKThμnh phÇn dinh d−ìngĐVHμm lượngTLTK
+[y672] (Nutrients)(Unit)(Value)(Source)(Nutrients)(Unit)(Value)(Source)
+[y660] Nước(Water)g13.92Tổng sốisoflavon(Total isoflavone)mg-
+[y644] Năng lượng(Energy)KCal346Daidzeinmg-
+[y632] KJ1447Genisteinmg-
+[y616] Proteing8.42Glycetinmg-
+[y604] Lipid(Fat)g1.62Tổng sốacid béo nog0.1103
+[y588] Glucid(Carbohydrate)g74.92(Total saturated fatty acid)
+[y576] Celluloza(Fiber)g0.52Palmitic (C16:0)g0.0903
+[y560] Tro(Ash)g0.72Margaric (C17:0)g0.0003
+[y548] Đường tổng số(Sugar)g-Stearic (C18:0)g0.0103
+[y532] Galactoza(Galactose)g-Arachidic (C20:0)g0.0003
+[y520] Maltoza(Maltose)g-Behenic (22:0)g0.0003
+[y504] Lactoza(Lactose)g-Lignoceric (C24:0)g0.0003
+[y492] Fructoza(Fructose)TS acid béo không no 1 nốiđôi
+[y488] g-g0.2003
+[y476] Glucoza(Glucose)g-(Total monounsaturated fatty acid)
+[y460] Sacaroza(Sucrose)g-Myristoleic (C14:1)g0.0003
+[y448] Calci(Calcium)mg162Palmitoleic (C16:1)g0.0003
+[y432] Sắt(Iron)mg1.202Oleic (C18:1)g0.2003
+[y420] MagiêMagiê(Magnesium)(Magnesium)mgmg171722TS acid béo không no nhiTS acid béo không no nhiềều nu nốốiiđđôiôigg0 2000.20033
+[y404] Mangan(Manganese)mg1.1002(Total polyunsaturated fatty acid)
+[y392] Phospho(Phosphorous)mg1302Linoleic (C18:2 n6)g0.1903
+[y376] Kali(Potassium)mg2822Linolenic (C18:2 n3)g0.0103
+[y364] Natri(Sodium)mg32Arachidonic (C20:4)g0.0003
+[y348] Kẽm(Zinc)mg2.202Eicosapentaenoic (C20:5 n3)g0.0003
+[y336] Đồng(Copper)μg2802Docosahexaenoic (C22:6 n3)g0.0003
+[y320] Selen(Selenium)μg15.13TS acid béo trans(Total trans fatty acid)g-
+[y308] Vitamin C(Ascorbic acid)mg03Cholesterolmg03
+[y292] Vitamin B1(Thiamine)mg0.162Phytosterolmg-
+[y280] Vitamin B2(Riboflavin)mg0.062Lysinmg2463
+[y264] Vitamin PP(Niacin)mg2.42Methioninmg1603
+[y252] Vitamin B5(Pantothenic acid)mg0.2843Tryptophanmg793
+[y236] Vitamin B6(Pyridoxine)mg0.1073Phenylalaninmg3643
+[y224] Folat(Folate)μg73Threoninmg2443
+[y208] Vitamin B9(Folic acid)μg03Valinmg4163
+[y196] Vitamin H(Biotin)μg-Leucinmg5633
+[y180] Vitamin B12(Cyanocobalamine)μg03Isoleucinmg2943
+[y168] Vitamin A(Retinol)μg03Argininmg5683
+[y152] Vitamin D(Calciferol)μg-Histidinmg1603
+[y140] Vitamin E(Alpha-tocopherol)mg-Cystinmg1403
+[y124] Vitamin K(Phylloquinone)μg-Tyrosinmg2283
+[y112] Beta-carotenμg03Alaninmg3953
+[y96] Alpha-carotenμg03Acid asparticmg6403
+[y84] Beta-cryptoxanthinμg03Acid glutamicmg13283
+[y68] Lycopenμg03Glycinmg3103
+[y56] Lutein + Zeaxanthinμg03Prolinmg3213
+[y40] Purinmg-Serinmg3583
+[y16] 2
+
+
+====PAGE 16====
+[y736] Tªn thùc phÈm (Vietnamese):STT:3
+[y732] G¹o tÎ gi·
+[y720] Tªn tiÕng Anh (English):Under milled, home-pounded riceM· sè:1003
+[y708] Thμnh phÇn dinh d−ìng trong 100g phÇn ¨n ®−îc (100 grams edible portion)Th¶i bá (%):
+[y704] 0.0
+[y684] Thμnh phÇn dinh d−ìngĐVHμm lượngTLTKThμnh phÇn dinh d−ìngĐVHμm lượngTLTK
+[y672] (Nutrients)(Unit)(Value)(Source)(Nutrients)(Unit)(Value)(Source)
+[y660] Nước(Water)g14.01Tổng sốisoflavon(Total isoflavone)mg-
+[y644] Năng lượng(Energy)KCal344Daidzeinmg-
+[y632] KJ1439Genisteinmg-
+[y616] Proteing8.11Glycetinmg-
+[y604] Lipid(Fat)g1.31Tổng sốacid béo nog-
+[y588] Glucid(Carbohydrate)g75.01(Total saturated fatty acid)
+[y576] Celluloza(Fiber)g0.71Palmitic (C16:0)g-
+[y560] Tro(Ash)g0.91Margaric (C17:0)g-
+[y548] Đường tổng số(Sugar)g-Stearic (C18:0)g-
+[y532] Galactoza(Galactose)g-Arachidic (C20:0)g-
+[y520] Maltoza(Maltose)g-Behenic (22:0)g-
+[y504] Lactoza(Lactose)g-Lignoceric (C24:0)g-
+[y492] Fructoza(Fructose)TS acid béo không no 1 nốiđôi
+[y488] g-g-
+[y476] Glucoza(Glucose)g-(Total monounsaturated fatty acid)
+[y460] Sacaroza(Sucrose)g-Myristoleic (C14:1)g-
+[y448] Calci(Calcium)mg361Palmitoleic (C16:1)g-
+[y432] Sắt(Iron)mg0.201Oleic (C18:1)g-
+[y420] MagiêMagiê(Magnesium)(Magnesium)mgmg525211TS acid béo không no nhiTS acid béo không no nhiềều nu nốốiiđđôiôigg--
+[y404] Mangan(Manganese)mg1.5001(Total polyunsaturated fatty acid)
+[y392] Phospho(Phosphorous)mg1081Linoleic (C18:2 n6)g-
+[y376] Kali(Potassium)mg2021Linolenic (C18:2 n3)g-
+[y364] Natri(Sodium)mg51Arachidonic (C20:4)g-
+[y348] Kẽm(Zinc)mg1.901Eicosapentaenoic (C20:5 n3)g-
+[y336] Đồng(Copper)μg3601Docosahexaenoic (C22:6 n3)g-
+[y320] Selen(Selenium)μg38.81TS acid béo trans(Total trans fatty acid)g-
+[y308] Vitamin C(Ascorbic acid)mg01Cholesterolmg01
+[y292] Vitamin B1(Thiamine)mg0.121Phytosterolmg-
+[y280] Vitamin B2(Riboflavin)mg0.041Lysinmg-
+[y264] Vitamin PP(Niacin)mg1.91Methioninmg-
+[y252] Vitamin B5(Pantothenic acid)mg-Tryptophanmg-
+[y236] Vitamin B6(Pyridoxine)mg-Phenylalaninmg-
+[y224] Folat(Folate)μg-Threoninmg-
+[y208] Vitamin B9(Folic acid)μg-Valinmg-
+[y196] Vitamin H(Biotin)μg35Leucinmg-
+[y180] Vitamin B12(Cyanocobalamine)μg-Isoleucinmg-
+[y168] Vitamin A(Retinol)μg01Argininmg-
+[y152] Vitamin D(Calciferol)μg-Histidinmg-
+[y140] Vitamin E(Alpha-tocopherol)mg-Cystinmg-
+[y124] Vitamin K(Phylloquinone)μg-Tyrosinmg-
+[y112] Beta-carotenμg03Alaninmg-
+[y96] Alpha-carotenμg03Acid asparticmg-
+[y84] Beta-cryptoxanthinμg03Acid glutamicmg-
+[y68] Lycopenμg03Glycinmg-
+[y56] Lutein + Zeaxanthinμg03Prolinmg-
+[y40] Purinmg-Serinmg-
+[y16] 3
+
+
+====PAGE 17====
+[y736] Tªn thùc phÈm (Vietnamese):STT:4
+[y732] G¹o tÎ m¸y
+[y720] Tªn tiÕng Anh (English):Ordinary polished riceM· sè:1004
+[y708] Thμnh phÇn dinh d−ìng trong 100g phÇn ¨n ®−îc (100 grams edible portion)Th¶i bá (%):
+[y704] 0.0
+[y684] Thμnh phÇn dinh d−ìngĐVHμm lượngTLTKThμnh phÇn dinh d−ìngĐVHμm lượngTLTK
+[y672] (Nutrients)(Unit)(Value)(Source)(Nutrients)(Unit)(Value)(Source)
+[y660] Nước(Water)g14.01Tổng sốisoflavon(Total isoflavone)mg-
+[y644] Năng lượng(Energy)KCal344Daidzeinmg-
+[y632] KJ1439Genisteinmg-
+[y616] Proteing7.91Glycetinmg-
+[y604] Lipid(Fat)g1.01Tổng sốacid béo nog0.1603
+[y588] Glucid(Carbohydrate)g75.91(Total saturated fatty acid)
+[y576] Celluloza(Fiber)g0.41Palmitic (C16:0)g0.1403
+[y560] Tro(Ash)g0.81Margaric (C17:0)g0.0003
+[y548] Đường tổng số(Sugar)g-Stearic (C18:0)g0.0103
+[y532] Galactoza(Galactose)g-Arachidic (C20:0)g0.0003
+[y520] Maltoza(Maltose)g-Behenic (22:0)g0.0003
+[y504] Lactoza(Lactose)g-Lignoceric (C24:0)g0.0003
+[y492] Fructoza(Fructose)TS acid béo không no 1 nốiđôi
+[y488] g-g0.1803
+[y476] Glucoza(Glucose)g-(Total monounsaturated fatty acid)
+[y460] Sacaroza(Sucrose)g-Myristoleic (C14:1)g0.0003
+[y448] Calci(Calcium)mg301Palmitoleic (C16:1)g0.0003
+[y432] Sắt(Iron)mg1.301Oleic (C18:1)g0.1803
+[y420] MagiêMagiê(Magnesium)(Magnesium)mgmg141411TS acid béo không no nhiTS acid béo không no nhiềều nu nốốiiđđôiôigg0 1600.16033
+[y404] Mangan(Manganese)mg0.9001(Total polyunsaturated fatty acid)
+[y392] Phospho(Phosphorous)mg1041Linoleic (C18:2 n6)g0.1303
+[y376] Kali(Potassium)mg2411Linolenic (C18:2 n3)g0.0303
+[y364] Natri(Sodium)mg51Arachidonic (C20:4)g0.0003
+[y348] Kẽm(Zinc)mg1.501Eicosapentaenoic (C20:5 n3)g0.0003
+[y336] Đồng(Copper)μg2301Docosahexaenoic (C22:6 n3)g0.0003
+[y320] Selen(Selenium)μg31.81TS acid béo trans(Total trans fatty acid)g-
+[y308] Vitamin C(Ascorbic acid)mg01Cholesterolmg03
+[y292] Vitamin B1(Thiamine)mg0.101Phytosterolmg-
+[y280] Vitamin B2(Riboflavin)mg0.031Lysinmg2393
+[y264] Vitamin PP(Niacin)mg1.61Methioninmg1553
+[y252] Vitamin B5(Pantothenic acid)mg1.3423Tryptophanmg773
+[y236] Vitamin B6(Pyridoxine)mg0.1453Phenylalaninmg3533
+[y224] Folat(Folate)μg93Threoninmg2363
+[y208] Vitamin B9(Folic acid)μg03Valinmg4033
+[y196] Vitamin H(Biotin)μg35Leucinmg5463
+[y180] Vitamin B12(Cyanocobalamine)μg03Isoleucinmg2853
+[y168] Vitamin A(Retinol)μg01Argininmg5513
+[y152] Vitamin D(Calciferol)μg-Histidinmg1553
+[y140] Vitamin E(Alpha-tocopherol)mg-Cystinmg1353
+[y124] Vitamin K(Phylloquinone)μg-Tyrosinmg2213
+[y112] Beta-carotenμg03Alaninmg3833
+[y96] Alpha-carotenμg03Acid asparticmg6213
+[y84] Beta-cryptoxanthinμg03Acid glutamicmg12883
+[y68] Lycopenμg03Glycinmg3013
+[y56] Lutein + Zeaxanthinμg03Prolinmg3113
+[y40] Purinmg-Serinmg3473
+[y16] 4
+
+
+====PAGE 18====
+[y736] Tªn thùc phÈm (Vietnamese):STT:5
+[y732] G¹o løt
+[y720] Tªn tiÕng Anh (English):Rice, brown or hulledM· sè:1005
+[y708] Thμnh phÇn dinh d−ìng trong 100g phÇn ¨n ®−îc (100 grams edible portion)Th¶i bá (%):
+[y704] 0.0
+[y684] Thμnh phÇn dinh d−ìngĐVHμm lượngTLTKThμnh phÇn dinh d−ìngĐVHμm lượngTLTK
+[y672] (Nutrients)(Unit)(Value)(Source)(Nutrients)(Unit)(Value)(Source)
+[y660] Nước(Water)g12.43Tổng sốisoflavon(Total isoflavone)mg-
+[y644] Năng lượng(Energy)KCal345Daidzeinmg-
+[y632] KJ1443Genisteinmg-
+[y616] Proteing7.53Glycetinmg-
+[y604] Lipid(Fat)g2.73Tổng sốacid béo nog0.5403
+[y588] Glucid(Carbohydrate)g72.83(Total saturated fatty acid)
+[y576] Celluloza(Fiber)g3.43Palmitic (C16:0)g0.4603
+[y560] Tro(Ash)g1.33Margaric (C17:0)g0.0003
+[y548] Đường tổng số(Sugar)g-Stearic (C18:0)g0.0503
+[y532] Galactoza(Galactose)g-Arachidic (C20:0)g0.0003
+[y520] Maltoza(Maltose)g-Behenic (22:0)g0.0003
+[y504] Lactoza(Lactose)g-Lignoceric (C24:0)g0.0003
+[y492] Fructoza(Fructose)TS acid béo không no 1 nốiđôi
+[y488] g-g0.9703
+[y476] Glucoza(Glucose)g-(Total monounsaturated fatty acid)
+[y460] Sacaroza(Sucrose)g-Myristoleic (C14:1)g0.0003
+[y448] Calci(Calcium)mg162Palmitoleic (C16:1)g0.0103
+[y432] Sắt(Iron)mg2.802Oleic (C18:1)g0.9603
+[y420] MagiêMagiê(Magnesium)(Magnesium)mgmg525222TS acid béo không no nhiTS acid béo không no nhiềều nu nốốiiđđôiôigg0 9600.96033
+[y404] Mangan(Manganese)mg1.5002(Total polyunsaturated fatty acid)
+[y392] Phospho(Phosphorous)mg2462Linoleic (C18:2 n6)g0.9203
+[y376] Kali(Potassium)mg2022Linolenic (C18:2 n3)g0.0403
+[y364] Natri(Sodium)mg52Arachidonic (C20:4)g0.0003
+[y348] Kẽm(Zinc)mg1.902Eicosapentaenoic (C20:5 n3)g0.0003
+[y336] Đồng(Copper)μg3602Docosahexaenoic (C22:6 n3)g0.0003
+[y320] Selen(Selenium)μg38.82TS acid béo trans(Total trans fatty acid)g-
+[y308] Vitamin C(Ascorbic acid)mg02Cholesterolmg03
+[y292] Vitamin B1(Thiamine)mg0.342Phytosterolmg-
+[y280] Vitamin B2(Riboflavin)mg0.072Lysinmg2863
+[y264] Vitamin PP(Niacin)mg5.02Methioninmg1693
+[y252] Vitamin B5(Pantothenic acid)mg1.52Tryptophanmg963
+[y236] Vitamin B6(Pyridoxine)mg0.622Phenylalaninmg3873
+[y224] Folat(Folate)μg203Threoninmg2753
+[y208] Vitamin B9(Folic acid)μg03Valinmg4403
+[y196] Vitamin H(Biotin)μg-Leucinmg6203
+[y180] Vitamin B12(Cyanocobalamine)μg-Isoleucinmg3183
+[y168] Vitamin A(Retinol)μg02Argininmg5693
+[y152] Vitamin D(Calciferol)μg-Histidinmg1903
+[y140] Vitamin E(Alpha-tocopherol)mg-Cystinmg913
+[y124] Vitamin K(Phylloquinone)μg-Tyrosinmg2813
+[y112] Beta-carotenμg03Alaninmg4373
+[y96] Alpha-carotenμg03Acid asparticmg7023
+[y84] Beta-cryptoxanthinμg03Acid glutamicmg15283
+[y68] Lycopenμg03Glycinmg3693
+[y56] Lutein + Zeaxanthinμg03Prolinmg3523
+[y40] Purinmg-Serinmg3883
+[y16] 5
+
+
+====PAGE 19====
+[y736] Tªn thùc phÈm (Vietnamese):STT:6
+[y732] Kª
+[y720] Tªn tiÕng Anh (English):Foxtail milletM· sè:1006
+[y708] Thμnh phÇn dinh d−ìng trong 100g phÇn ¨n ®−îc (100 grams edible portion)Th¶i bá (%):
+[y704] 2.0
+[y684] Thμnh phÇn dinh d−ìngĐVHμm lượngTLTKThμnh phÇn dinh d−ìngĐVHμm lượngTLTK
+[y672] (Nutrients)(Unit)(Value)(Source)(Nutrients)(Unit)(Value)(Source)
+[y660] Nước(Water)g14.01Tổng sốisoflavon(Total isoflavone)mg-
+[y644] Năng lượng(Energy)KCal331Daidzeinmg-
+[y632] KJ1385Genisteinmg-
+[y616] Proteing7.01Glycetinmg-
+[y604] Lipid(Fat)g3.01Tổng sốacid béo nog0.7203
+[y588] Glucid(Carbohydrate)g69.01(Total saturated fatty acid)
+[y576] Celluloza(Fiber)g3.41Palmitic (C16:0)g0.5303
+[y560] Tro(Ash)g3.61Margaric (C17:0)g0.0003
+[y548] Đường tổng số(Sugar)g-Stearic (C18:0)g0.1503
+[y532] Galactoza(Galactose)g-Arachidic (C20:0)g0.0003
+[y520] Maltoza(Maltose)g-Behenic (22:0)g0.0003
+[y504] Lactoza(Lactose)g-Lignoceric (C24:0)g0.0003
+[y492] Fructoza(Fructose)TS acid béo không no 1 nốiđôi
+[y488] g-g0.7703
+[y476] Glucoza(Glucose)g-(Total monounsaturated fatty acid)
+[y460] Sacaroza(Sucrose)g-Myristoleic (C14:1)g0.0003
+[y448] Calci(Calcium)mg221Palmitoleic (C16:1)g0.0103
+[y432] Sắt(Iron)mg2.701Oleic (C18:1)g0.7403
+[y420] MagiêMagiê(Magnesium)(Magnesium)mgmg43043011TS acid béo không no nhiTS acid béo không no nhiềều nu nốốiiđđôiôigg2 1302.13033
+[y404] Mangan(Manganese)mg1.7001(Total polyunsaturated fatty acid)
+[y392] Phospho(Phosphorous)mg2901Linoleic (C18:2 n6)g2.0203
+[y376] Kali(Potassium)mg2491Linolenic (C18:2 n3)g0.1203
+[y364] Natri(Sodium)mg71Arachidonic (C20:4)g0.0003
+[y348] Kẽm(Zinc)mg1.501Eicosapentaenoic (C20:5 n3)g0.0003
+[y336] Đồng(Copper)μg4401Docosahexaenoic (C22:6 n3)g0.0003
+[y320] Selen(Selenium)μg2.73TS acid béo trans(Total trans fatty acid)g-
+[y308] Vitamin C(Ascorbic acid)mg01Cholesterolmg03
+[y292] Vitamin B1(Thiamine)mg0.401Phytosterolmg-
+[y280] Vitamin B2(Riboflavin)mg0.091Lysinmg1353
+[y264] Vitamin PP(Niacin)mg1.61Methioninmg1403
+[y252] Vitamin B5(Pantothenic acid)mg0.8483Tryptophanmg763
+[y236] Vitamin B6(Pyridoxine)mg0.3843Phenylalaninmg3683
+[y224] Folat(Folate)μg853Threoninmg2243
+[y208] Vitamin B9(Folic acid)μg03Valinmg3673
+[y196] Vitamin H(Biotin)μg-Leucinmg8893
+[y180] Vitamin B12(Cyanocobalamine)μg03Isoleucinmg2953
+[y168] Vitamin A(Retinol)μg01Argininmg2433
+[y152] Vitamin D(Calciferol)μg-Histidinmg1503
+[y140] Vitamin E(Alpha-tocopherol)mg0.053Cystinmg1353
+[y124] Vitamin K(Phylloquinone)μg0.93Tyrosinmg2163
+[y112] Beta-carotenμg603Alaninmg6263
+[y96] Alpha-carotenμg-Acid asparticmg4613
+[y84] Beta-cryptoxanthinμg-Acid glutamicmg15223
+[y68] Lycopenμg-Glycinmg1823
+[y56] Lutein + Zeaxanthinμg-Prolinmg5573
+[y40] Purinmg624Serinmg4093
+[y16] 6
+
+
+====PAGE 20====
+[y736] Tªn thùc phÈm (Vietnamese):STT:7
+[y732] Ng« b¾p t−¬i
+[y720] Tªn tiÕng Anh (English):Fresh maize seeds, rawM· sè:1007
+[y708] Thμnh phÇn dinh d−ìng trong 100g phÇn ¨n ®−îc (100 grams edible portion)Th¶i bá (%):45.0
+[y684] Thμnh phÇn dinh d−ìngĐVHμm lượngTLTKThμnh phÇn dinh d−ìngĐVHμm lượngTLTK
+[y672] (Nutrients)(Unit)(Value)(Source)(Nutrients)(Unit)(Value)(Source)
+[y660] Nước(Water)g52.01Tổng sốisoflavon(Total isoflavone)mg-
+[y644] Năng lượng(Energy)KCal196Daidzeinmg-
+[y632] KJ818Genisteinmg-
+[y616] Proteing4.11Glycetinmg-
+[y604] Lipid(Fat)g2.31Tổng sốacid béo nog0.2805
+[y588] Glucid(Carbohydrate)g39.61(Total saturated fatty acid)
+[y576] Celluloza(Fiber)g1.21Palmitic (C16:0)g0.2405
+[y560] Tro(Ash)g0.81Margaric (C17:0)g0.0005
+[y548] Đường tổng số(Sugar)g1.75Stearic (C18:0)g0.0405
+[y532] Galactoza(Galactose)g-Arachidic (C20:0)g0.0003
+[y520] Maltoza(Maltose)g0.15Behenic (22:0)g0.0003
+[y504] Lactoza(Lactose)g05Lignoceric (C24:0)g0.0003
+[y492] Fructoza(Fructose)TS acid béo không no 1 nốiđôi
+[y488] g0.25g0.5205
+[y476] Glucoza(Glucose)g0.65(Total monounsaturated fatty acid)
+[y460] Sacaroza(Sucrose)g-Myristoleic (C14:1)g0.0005
+[y448] Calci(Calcium)mg45Palmitoleic (C16:1)g0.0005
+[y432] Sắt(Iron)mg0.605Oleic (C18:1)g0.5205
+[y420] MagiêMagiê(Magnesium)(Magnesium)mgmg393955TS acid béo không no nhiTS acid béo không no nhiềều nu nốốiiđđôiôigg0 8900.89055
+[y404] Mangan(Manganese)mg0.3505(Total polyunsaturated fatty acid)
+[y392] Phospho(Phosphorous)mg1705Linoleic (C18:2 n6)g0.8605
+[y376] Kali(Potassium)mg3065Linolenic (C18:2 n3)g0.0305
+[y364] Natri(Sodium)mg35Arachidonic (C20:4)g0.0005
+[y348] Kẽm(Zinc)mg1.405Eicosapentaenoic (C20:5 n3)g0.0005
+[y336] Đồng(Copper)μg2405Docosahexaenoic (C22:6 n3)g0.0005
+[y320] Selen(Selenium)μg45TS acid béo trans(Total trans fatty acid)g-
+[y308] Vitamin C(Ascorbic acid)mg125Cholesterolmg05
+[y292] Vitamin B1(Thiamine)mg0.155Phytosterolmg-
+[y280] Vitamin B2(Riboflavin)mg0.085Lysinmg1005
+[y264] Vitamin PP(Niacin)mg1.85Methioninmg715
+[y252] Vitamin B5(Pantothenic acid)mg0.545Tryptophanmg245
+[y236] Vitamin B6(Pyridoxine)mg0.165Phenylalaninmg1905
+[y224] Folat(Folate)μg335Threoninmg1405
+[y208] Vitamin B9(Folic acid)μg05Valinmg1805
+[y196] Vitamin H(Biotin)μg0.55Leucinmg4705
+[y180] Vitamin B12(Cyanocobalamine)μg03Isoleucinmg1405
+[y168] Vitamin A(Retinol)μg01Argininmg1505
+[y152] Vitamin D(Calciferol)μg-Histidinmg1005
+[y140] Vitamin E(Alpha-tocopherol)mg0.85Cystinmg595
+[y124] Vitamin K(Phylloquinone)μg05Tyrosinmg1405
+[y112] Beta-carotenμg-Alaninmg2805
+[y96] Alpha-carotenμg-Acid asparticmg2405
+[y84] Beta-cryptoxanthinμg-Acid glutamicmg7605
+[y68] Lycopenμg-Glycinmg1405
+[y56] Lutein + Zeaxanthinμg-Prolinmg3305
+[y40] Purinmg524Serinmg1905
+[y16] 7
+
+
+====PAGE 21====
+[y736] Tªn thùc phÈm (Vietnamese):STT:8
+[y732] Ng« vμng h¹t kh«
+[y720] Tªn tiÕng Anh (English):Yellow maize, dried seedsM· sè:1008
+[y708] Thμnh phÇn dinh d−ìng trong 100g phÇn ¨n ®−îc (100 grams edible portion)Th¶i bá (%):
+[y704] 2.0
+[y684] Thμnh phÇn dinh d−ìngĐVHμm lượngTLTKThμnh phÇn dinh d−ìngĐVHμm lượngTLTK
+[y672] (Nutrients)(Unit)(Value)(Source)(Nutrients)(Unit)(Value)(Source)
+[y660] Nước(Water)g14.01Tổng sốisoflavon(Total isoflavone)mg-
+[y644] Năng lượng(Energy)KCal354Daidzeinmg-
+[y632] KJ1482Genisteinmg-
+[y616] Proteing8.61Glycetinmg-
+[y604] Lipid(Fat)g4.71Tổng sốacid béo nog0.6703
+[y588] Glucid(Carbohydrate)g69.41(Total saturated fatty acid)
+[y576] Celluloza(Fiber)g2.01Palmitic (C16:0)g0.5703
+[y560] Tro(Ash)g1.31Margaric (C17:0)g0.0005
+[y548] Đường tổng số(Sugar)g0.643Stearic (C18:0)g0.0803
+[y532] Galactoza(Galactose)g-Arachidic (C20:0)g0.0003
+[y520] Maltoza(Maltose)g-Behenic (22:0)g0.0003
+[y504] Lactoza(Lactose)g-Lignoceric (C24:0)g0.0003
+[y492] Fructoza(Fructose)TS acid béo không no 1 nốiđôi
+[y488] g-g1.2503
+[y476] Glucoza(Glucose)g-(Total monounsaturated fatty acid)
+[y460] Sacaroza(Sucrose)g-Myristoleic (C14:1)g0.0003
+[y448] Calci(Calcium)mg301Palmitoleic (C16:1)g0.0003
+[y432] Sắt(Iron)mg2.301Oleic (C18:1)g1.2503
+[y420] MagiêMagiê(Magnesium)(Magnesium)mgmg12712733TS acid béo không no nhiTS acid béo không no nhiềều nu nốốiiđđôiôigg2 1602.16033
+[y404] Mangan(Manganese)mg0.4903(Total polyunsaturated fatty acid)
+[y392] Phospho(Phosphorous)mg1901Linoleic (C18:2 n6)g2.1003
+[y376] Kali(Potassium)mg2873Linolenic (C18:2 n3)g0.0703
+[y364] Natri(Sodium)mg353Arachidonic (C20:4)g0.0003
+[y348] Kẽm(Zinc)mg2.213Eicosapentaenoic (C20:5 n3)g0.0003
+[y336] Đồng(Copper)μg3143Docosahexaenoic (C22:6 n3)g0.0003
+[y320] Selen(Selenium)μg15.53TS acid béo trans(Total trans fatty acid)g-
+[y308] Vitamin C(Ascorbic acid)mg01Cholesterolmg03
+[y292] Vitamin B1(Thiamine)mg0.281Phytosterolmg-
+[y280] Vitamin B2(Riboflavin)mg0.111Lysinmg2423
+[y264] Vitamin PP(Niacin)mg2.01Methioninmg1803
+[y252] Vitamin B5(Pantothenic acid)mg0.4243Tryptophanmg613
+[y236] Vitamin B6(Pyridoxine)mg0.6223Phenylalaninmg4233
+[y224] Folat(Folate)μg193Threoninmg3233
+[y208] Vitamin B9(Folic acid)μg03Valinmg4353
+[y196] Vitamin H(Biotin)μg-Leucinmg10543
+[y180] Vitamin B12(Cyanocobalamine)μg03Isoleucinmg3083
+[y168] Vitamin A(Retinol)μg01Argininmg4293
+[y152] Vitamin D(Calciferol)μg-Histidinmg2623
+[y140] Vitamin E(Alpha-tocopherol)mg0.493Cystinmg1553
+[y124] Vitamin K(Phylloquinone)μg0.33Tyrosinmg3503
+[y112] Beta-carotenμg973Alaninmg6443
+[y96] Alpha-carotenμg633Acid asparticmg5983
+[y84] Beta-cryptoxanthinμg03Acid glutamicmg16143
+[y68] Lycopenμg03Glycinmg3523
+[y56] Lutein + Zeaxanthinμg13553Prolinmg7503
+[y40] Purinmg-Serinmg4083
+[y16] 8
+
+
+====PAGE 22====
+[y736] Tªn thùc phÈm (Vietnamese):STT:9
+[y732] B¸nh bao nh©n thÞt
+[y720] Tªn tiÕng Anh (English):Ball shaped dumpling, Vietnamese steamed bunsM· sè:1009
+[y708] Thμnh phÇn dinh d−ìng trong 100g phÇn ¨n ®−îc (100 grams edible portion)Th¶i bá (%):
+[y704] 0.0
+[y684] Thμnh phÇn dinh d−ìngĐVHμm lượngTLTKThμnh phÇn dinh d−ìngĐVHμm lượngTLTK
+[y672] (Nutrients)(Unit)(Value)(Source)(Nutrients)(Unit)(Value)(Source)
+[y660] Nước(Water)g44.01Tổng sốisoflavon(Total isoflavone)mg-
+[y644] Năng lượng(Energy)KCal219Daidzeinmg-
+[y632] KJ916Genisteinmg-
+[y616] Proteing6.11Glycetinmg-
+[y604] Lipid(Fat)g0.51Tổng sốacid béo nog-
+[y588] Glucid(Carbohydrate)g47.51(Total saturated fatty acid)
+[y576] Celluloza(Fiber)g0.51Palmitic (C16:0)g-
+[y560] Tro(Ash)g1.41Margaric (C17:0)g-
+[y548] Đường tổng số(Sugar)g-Stearic (C18:0)g-
+[y532] Galactoza(Galactose)g-Arachidic (C20:0)g-
+[y520] Maltoza(Maltose)g-Behenic (22:0)g-
+[y504] Lactoza(Lactose)g-Lignoceric (C24:0)g-
+[y492] Fructoza(Fructose)TS acid béo không no 1 nốiđôi
+[y488] g-g-
+[y476] Glucoza(Glucose)g-(Total monounsaturated fatty acid)
+[y460] Sacaroza(Sucrose)g-Myristoleic (C14:1)g-
+[y448] Calci(Calcium)mg191Palmitoleic (C16:1)g-
+[y432] Sắt(Iron)mg1.501Oleic (C18:1)g-
+[y420] MagiêMagiê(Magnesium)(Magnesium)mgmg--TS acid béo không no nhiTS acid béo không no nhiềều nu nốốiiđđôiôigg--
+[y404] Mangan(Manganese)mg-(Total polyunsaturated fatty acid)
+[y392] Phospho(Phosphorous)mg881Linoleic (C18:2 n6)g-
+[y376] Kali(Potassium)mg-Linolenic (C18:2 n3)g-
+[y364] Natri(Sodium)mg-Arachidonic (C20:4)g-
+[y348] Kẽm(Zinc)mg-Eicosapentaenoic (C20:5 n3)g-
+[y336] Đồng(Copper)μg-Docosahexaenoic (C22:6 n3)g-
+[y320] Selen(Selenium)μg-TS acid béo trans(Total trans fatty acid)g-
+[y308] Vitamin C(Ascorbic acid)mg-Cholesterolmg01
+[y292] Vitamin B1(Thiamine)mg0.101Phytosterolmg-
+[y280] Vitamin B2(Riboflavin)mg0.041Lysinmg-
+[y264] Vitamin PP(Niacin)mg1.01Methioninmg-
+[y252] Vitamin B5(Pantothenic acid)mg-Tryptophanmg-
+[y236] Vitamin B6(Pyridoxine)mg-Phenylalaninmg-
+[y224] Folat(Folate)μg-Threoninmg-
+[y208] Vitamin B9(Folic acid)μg-Valinmg-
+[y196] Vitamin H(Biotin)μg-Leucinmg-
+[y180] Vitamin B12(Cyanocobalamine)μg-Isoleucinmg-
+[y168] Vitamin A(Retinol)μg01Argininmg-
+[y152] Vitamin D(Calciferol)μg-Histidinmg-
+[y140] Vitamin E(Alpha-tocopherol)mg-Cystinmg-
+[y124] Vitamin K(Phylloquinone)μg-Tyrosinmg-
+[y112] Beta-carotenμg03Alaninmg-
+[y96] Alpha-carotenμg03Acid asparticmg-
+[y84] Beta-cryptoxanthinμg03Acid glutamicmg-
+[y68] Lycopenμg03Glycinmg-
+[y56] Lutein + Zeaxanthinμg03Prolinmg-
+[y40] Purinmg-Serinmg-
+[y16] 9
+
+
+====PAGE 23====
+[y736] Tªn thùc phÈm (Vietnamese):STT:10
+[y732] B¸nh ®a nem
+[y720] Tªn tiÕng Anh (English):Rice paper for rollersM· sè:1010
+[y708] Thμnh phÇn dinh d−ìng trong 100g phÇn ¨n ®−îc (100 grams edible portion)Th¶i bá (%):
+[y704] 0.0
+[y684] Thμnh phÇn dinh d−ìngĐVHμm lượngTLTKThμnh phÇn dinh d−ìngĐVHμm lượngTLTK
+[y672] (Nutrients)(Unit)(Value)(Source)(Nutrients)(Unit)(Value)(Source)
+[y660] Nước(Water)g15.01Tổng sốisoflavon(Total isoflavone)mg-
+[y644] Năng lượng(Energy)KCal333Daidzeinmg-
+[y632] KJ1394Genisteinmg-
+[y616] Proteing4.01Glycetinmg-
+[y604] Lipid(Fat)g0.21Tổng sốacid béo nog-
+[y588] Glucid(Carbohydrate)g78.91(Total saturated fatty acid)
+[y576] Celluloza(Fiber)g0.51Palmitic (C16:0)g-
+[y560] Tro(Ash)g1.41Margaric (C17:0)g-
+[y548] Đường tổng số(Sugar)g-Stearic (C18:0)g-
+[y532] Galactoza(Galactose)g-Arachidic (C20:0)g-
+[y520] Maltoza(Maltose)g-Behenic (22:0)g-
+[y504] Lactoza(Lactose)g-Lignoceric (C24:0)g-
+[y492] Fructoza(Fructose)TS acid béo không no 1 nốiđôi
+[y488] g-g-
+[y476] Glucoza(Glucose)g-(Total monounsaturated fatty acid)
+[y460] Sacaroza(Sucrose)g-Myristoleic (C14:1)g-
+[y448] Calci(Calcium)mg201Palmitoleic (C16:1)g-
+[y432] Sắt(Iron)mg0.301Oleic (C18:1)g-
+[y420] MagiêMagiê(Magnesium)(Magnesium)mgmg--TS acid béo không no nhiTS acid béo không no nhiềều nu nốốiiđđôiôigg--
+[y404] Mangan(Manganese)mg-(Total polyunsaturated fatty acid)
+[y392] Phospho(Phosphorous)mg651Linoleic (C18:2 n6)g-
+[y376] Kali(Potassium)mg-Linolenic (C18:2 n3)g-
+[y364] Natri(Sodium)mg-Arachidonic (C20:4)g-
+[y348] Kẽm(Zinc)mg-Eicosapentaenoic (C20:5 n3)g-
+[y336] Đồng(Copper)μg-Docosahexaenoic (C22:6 n3)g-
+[y320] Selen(Selenium)μg-TS acid béo trans(Total trans fatty acid)g-
+[y308] Vitamin C(Ascorbic acid)mg01Cholesterolmg01
+[y292] Vitamin B1(Thiamine)mg-Phytosterolmg-
+[y280] Vitamin B2(Riboflavin)mg-Lysinmg-
+[y264] Vitamin PP(Niacin)mg-Methioninmg-
+[y252] Vitamin B5(Pantothenic acid)mg-Tryptophanmg-
+[y236] Vitamin B6(Pyridoxine)mg-Phenylalaninmg-
+[y224] Folat(Folate)μg-Threoninmg-
+[y208] Vitamin B9(Folic acid)μg-Valinmg-
+[y196] Vitamin H(Biotin)μg-Leucinmg-
+[y180] Vitamin B12(Cyanocobalamine)μg-Isoleucinmg-
+[y168] Vitamin A(Retinol)μg01Argininmg-
+[y152] Vitamin D(Calciferol)μg0.001Histidinmg-
+[y140] Vitamin E(Alpha-tocopherol)mg01Cystinmg-
+[y124] Vitamin K(Phylloquinone)μg01Tyrosinmg-
+[y112] Beta-carotenμg03Alaninmg-
+[y96] Alpha-carotenμg03Acid asparticmg-
+[y84] Beta-cryptoxanthinμg03Acid glutamicmg-
+[y68] Lycopenμg03Glycinmg-
+[y56] Lutein + Zeaxanthinμg03Prolinmg-
+[y40] Purinmg04Serinmg-
+[y16] 10
+
+
+====PAGE 24====
+[y736] Tªn thùc phÈm (Vietnamese):STT:11
+[y732] B¸nh ®óc
+[y720] Tªn tiÕng Anh (English):Rice puddingM· sè:1011
+[y708] Thμnh phÇn dinh d−ìng trong 100g phÇn ¨n ®−îc (100 grams edible portion)Th¶i bá (%):
+[y704] 0.0
+[y684] Thμnh phÇn dinh d−ìngĐVHμm lượngTLTKThμnh phÇn dinh d−ìngĐVHμm lượngTLTK
+[y672] (Nutrients)(Unit)(Value)(Source)(Nutrients)(Unit)(Value)(Source)
+[y660] Nước(Water)g86.81Tổng sốisoflavon(Total isoflavone)mg-
+[y644] Năng lượng(Energy)KCal52Daidzeinmg-
+[y632] KJ215Genisteinmg-
+[y616] Proteing0.91Glycetinmg-
+[y604] Lipid(Fat)g0.31Tổng sốacid béo nog-
+[y588] Glucid(Carbohydrate)g11.31(Total saturated fatty acid)
+[y576] Celluloza(Fiber)g0.11Palmitic (C16:0)g-
+[y560] Tro(Ash)g0.61Margaric (C17:0)g-
+[y548] Đường tổng số(Sugar)g-Stearic (C18:0)g-
+[y532] Galactoza(Galactose)g-Arachidic (C20:0)g-
+[y520] Maltoza(Maltose)g-Behenic (22:0)g-
+[y504] Lactoza(Lactose)g-Lignoceric (C24:0)g-
+[y492] Fructoza(Fructose)TS acid béo không no 1 nốiđôi
+[y488] g-g-
+[y476] Glucoza(Glucose)g-(Total monounsaturated fatty acid)
+[y460] Sacaroza(Sucrose)g-Myristoleic (C14:1)g-
+[y448] Calci(Calcium)mg501Palmitoleic (C16:1)g-
+[y432] Sắt(Iron)mg0.401Oleic (C18:1)g-
+[y420] MagiêMagiê(Magnesium)(Magnesium)mgmg--TS acid béo không no nhiTS acid béo không no nhiềều nu nốốiiđđôiôigg--
+[y404] Mangan(Manganese)mg-(Total polyunsaturated fatty acid)
+[y392] Phospho(Phosphorous)mg191Linoleic (C18:2 n6)g-
+[y376] Kali(Potassium)mg-Linolenic (C18:2 n3)g-
+[y364] Natri(Sodium)mg-Arachidonic (C20:4)g-
+[y348] Kẽm(Zinc)mg-Eicosapentaenoic (C20:5 n3)g-
+[y336] Đồng(Copper)μg-Docosahexaenoic (C22:6 n3)g-
+[y320] Selen(Selenium)μg-TS acid béo trans(Total trans fatty acid)g-
+[y308] Vitamin C(Ascorbic acid)mg01Cholesterolmg01
+[y292] Vitamin B1(Thiamine)mg-Phytosterolmg-
+[y280] Vitamin B2(Riboflavin)mg-Lysinmg-
+[y264] Vitamin PP(Niacin)mg-Methioninmg-
+[y252] Vitamin B5(Pantothenic acid)mg-Tryptophanmg-
+[y236] Vitamin B6(Pyridoxine)mg-Phenylalaninmg-
+[y224] Folat(Folate)μg-Threoninmg-
+[y208] Vitamin B9(Folic acid)μg-Valinmg-
+[y196] Vitamin H(Biotin)μg-Leucinmg-
+[y180] Vitamin B12(Cyanocobalamine)μg-Isoleucinmg-
+[y168] Vitamin A(Retinol)μg01Argininmg-
+[y152] Vitamin D(Calciferol)μg-Histidinmg-
+[y140] Vitamin E(Alpha-tocopherol)mg-Cystinmg-
+[y124] Vitamin K(Phylloquinone)μg-Tyrosinmg-
+[y112] Beta-carotenμg03Alaninmg-
+[y96] Alpha-carotenμg03Acid asparticmg-
+[y84] Beta-cryptoxanthinμg03Acid glutamicmg-
+[y68] Lycopenμg03Glycinmg-
+[y56] Lutein + Zeaxanthinμg03Prolinmg-
+[y40] Purinmg-Serinmg-
+[y16] 11
+
+
+====PAGE 25====
+[y736] Tªn thùc phÈm (Vietnamese):STT:12
+[y732] B¸nh mú
+[y720] Tªn tiÕng Anh (English):French breadM· sè:1012
+[y708] Thμnh phÇn dinh d−ìng trong 100g phÇn ¨n ®−îc (100 grams edible portion)Th¶i bá (%):
+[y704] 0.0
+[y684] Thμnh phÇn dinh d−ìngĐVHμm lượngTLTKThμnh phÇn dinh d−ìngĐVHμm lượngTLTK
+[y672] (Nutrients)(Unit)(Value)(Source)(Nutrients)(Unit)(Value)(Source)
+[y660] Nước(Water)g37.21Tổng sốisoflavon(Total isoflavone)mg-
+[y644] Năng lượng(Energy)KCal249Daidzeinmg-
+[y632] KJ1043Genisteinmg-
+[y616] Proteing7.91Glycetinmg-
+[y604] Lipid(Fat)g0.81Tổng sốacid béo nog-
+[y588] Glucid(Carbohydrate)g52.61(Total saturated fatty acid)
+[y576] Celluloza(Fiber)g0.21Palmitic (C16:0)g-
+[y560] Tro(Ash)g1.31Margaric (C17:0)g-
+[y548] Đường tổng số(Sugar)g-Stearic (C18:0)g-
+[y532] Galactoza(Galactose)g-Arachidic (C20:0)g-
+[y520] Maltoza(Maltose)g-Behenic (22:0)g-
+[y504] Lactoza(Lactose)g-Lignoceric (C24:0)g-
+[y492] Fructoza(Fructose)TS acid béo không no 1 nốiđôi
+[y488] g-g-
+[y476] Glucoza(Glucose)g-(Total monounsaturated fatty acid)
+[y460] Sacaroza(Sucrose)g-Myristoleic (C14:1)g-
+[y448] Calci(Calcium)mg281Palmitoleic (C16:1)g-
+[y432] Sắt(Iron)mg2.001Oleic (C18:1)g-
+[y420] MagiêMagiê(Magnesium)(Magnesium)mgmg--TS acid béo không no nhiTS acid béo không no nhiềều nu nốốiiđđôiôigg--
+[y404] Mangan(Manganese)mg-(Total polyunsaturated fatty acid)
+[y392] Phospho(Phosphorous)mg1641Linoleic (C18:2 n6)g-
+[y376] Kali(Potassium)mg-Linolenic (C18:2 n3)g-
+[y364] Natri(Sodium)mg-Arachidonic (C20:4)g-
+[y348] Kẽm(Zinc)mg-Eicosapentaenoic (C20:5 n3)g-
+[y336] Đồng(Copper)μg-Docosahexaenoic (C22:6 n3)g-
+[y320] Selen(Selenium)μg-TS acid béo trans(Total trans fatty acid)g-
+[y308] Vitamin C(Ascorbic acid)mg01Cholesterolmg01
+[y292] Vitamin B1(Thiamine)mg0.101Phytosterolmg-
+[y280] Vitamin B2(Riboflavin)mg0.071Lysinmg1631
+[y264] Vitamin PP(Niacin)mg0.71Methioninmg1331
+[y252] Vitamin B5(Pantothenic acid)mg-Tryptophanmg661
+[y236] Vitamin B6(Pyridoxine)mg-Phenylalaninmg3141
+[y224] Folat(Folate)μg-Threoninmg2161
+[y208] Vitamin B9(Folic acid)μg-Valinmg3661
+[y196] Vitamin H(Biotin)μg-Leucinmg4601
+[y180] Vitamin B12(Cyanocobalamine)μg-Isoleucinmg2941
+[y168] Vitamin A(Retinol)μg01Argininmg2941
+[y152] Vitamin D(Calciferol)μg-Histidinmg1331
+[y140] Vitamin E(Alpha-tocopherol)mg-Cystinmg1881
+[y124] Vitamin K(Phylloquinone)μg-Tyrosinmg2081
+[y112] Beta-carotenμg03Alaninmg2801
+[y96] Alpha-carotenμg03Acid asparticmg3921
+[y84] Beta-cryptoxanthinμg03Acid glutamicmg19241
+[y68] Lycopenμg03Glycinmg3311
+[y56] Lutein + Zeaxanthinμg03Prolinmg7321
+[y40] Purinmg-Serinmg3451
+[y16] 12
+
+
+====PAGE 26====
+[y736] Tªn thùc phÈm (Vietnamese):STT:13
+[y732] B¸nh phë
+[y720] Tªn tiÕng Anh (English):Rice noodlesM· sè:1013
+[y708] Thμnh phÇn dinh d−ìng trong 100g phÇn ¨n ®−îc (100 grams edible portion)Th¶i bá (%):
+[y704] 0.0
+[y684] Thμnh phÇn dinh d−ìngĐVHμm lượngTLTKThμnh phÇn dinh d−ìngĐVHμm lượngTLTK
+[y672] (Nutrients)(Unit)(Value)(Source)(Nutrients)(Unit)(Value)(Source)
+[y660] Nước(Water)g64.31Tổng sốisoflavon(Total isoflavone)mg-
+[y644] Năng lượng(Energy)KCal143Daidzeinmg-
+[y632] KJ599Genisteinmg-
+[y616] Proteing3.21Glycetinmg-
+[y604] Lipid(Fat)g0.43Tổng sốacid béo nog-
+[y588] Glucid(Carbohydrate)g31.71(Total saturated fatty acid)
+[y576] Celluloza(Fiber)g0.03Palmitic (C16:0)g-
+[y560] Tro(Ash)g0.41Margaric (C17:0)g-
+[y548] Đường tổng số(Sugar)g-Stearic (C18:0)g-
+[y532] Galactoza(Galactose)g-Arachidic (C20:0)g-
+[y520] Maltoza(Maltose)g-Behenic (22:0)g-
+[y504] Lactoza(Lactose)g-Lignoceric (C24:0)g-
+[y492] Fructoza(Fructose)TS acid béo không no 1 nốiđôi
+[y488] g-g-
+[y476] Glucoza(Glucose)g-(Total monounsaturated fatty acid)
+[y460] Sacaroza(Sucrose)g-Myristoleic (C14:1)g-
+[y448] Calci(Calcium)mg161Palmitoleic (C16:1)g-
+[y432] Sắt(Iron)mg0.301Oleic (C18:1)g-
+[y420] MagiêMagiê(Magnesium)(Magnesium)mgmg--TS acid béo không no nhiTS acid béo không no nhiềều nu nốốiiđđôiôigg--
+[y404] Mangan(Manganese)mg-(Total polyunsaturated fatty acid)
+[y392] Phospho(Phosphorous)mg641Linoleic (C18:2 n6)g-
+[y376] Kali(Potassium)mg151Linolenic (C18:2 n3)g-
+[y364] Natri(Sodium)mg31Arachidonic (C20:4)g-
+[y348] Kẽm(Zinc)mg-Eicosapentaenoic (C20:5 n3)g-
+[y336] Đồng(Copper)μg-Docosahexaenoic (C22:6 n3)g-
+[y320] Selen(Selenium)μg-TS acid béo trans(Total trans fatty acid)g-
+[y308] Vitamin C(Ascorbic acid)mg01Cholesterolmg01
+[y292] Vitamin B1(Thiamine)mg0.011Phytosterolmg-
+[y280] Vitamin B2(Riboflavin)mg0.011Lysinmg-
+[y264] Vitamin PP(Niacin)mg0.21Methioninmg-
+[y252] Vitamin B5(Pantothenic acid)mg-Tryptophanmg-
+[y236] Vitamin B6(Pyridoxine)mg-Phenylalaninmg-
+[y224] Folat(Folate)μg-Threoninmg-
+[y208] Vitamin B9(Folic acid)μg-Valinmg-
+[y196] Vitamin H(Biotin)μg-Leucinmg-
+[y180] Vitamin B12(Cyanocobalamine)μg-Isoleucinmg-
+[y168] Vitamin A(Retinol)μg01Argininmg-
+[y152] Vitamin D(Calciferol)μg0.001Histidinmg-
+[y140] Vitamin E(Alpha-tocopherol)mg01Cystinmg-
+[y124] Vitamin K(Phylloquinone)μg01Tyrosinmg-
+[y112] Beta-carotenμg03Alaninmg-
+[y96] Alpha-carotenμg03Acid asparticmg-
+[y84] Beta-cryptoxanthinμg03Acid glutamicmg-
+[y68] Lycopenμg03Glycinmg-
+[y56] Lutein + Zeaxanthinμg03Prolinmg-
+[y40] Purinmg04Serinmg-
+[y16] 13
+
+
+====PAGE 27====
+[y736] Tªn thùc phÈm (Vietnamese):STT:14
+[y732] B¸nh quÈy
+[y720] Tªn tiÕng Anh (English):Wheat fritters twisted friedM· sè:1014
+[y708] Thμnh phÇn dinh d−ìng trong 100g phÇn ¨n ®−îc (100 grams edible portion)Th¶i bá (%):
+[y704] 0.0
+[y684] Thμnh phÇn dinh d−ìngĐVHμm lượngTLTKThμnh phÇn dinh d−ìngĐVHμm lượngTLTK
+[y672] (Nutrients)(Unit)(Value)(Source)(Nutrients)(Unit)(Value)(Source)
+[y660] Nước(Water)g38.71Tổng sốisoflavon(Total isoflavone)mg-
+[y644] Năng lượng(Energy)KCal292Daidzeinmg-
+[y632] KJ1222Genisteinmg-
+[y616] Proteing8.01Glycetinmg-
+[y604] Lipid(Fat)g10.81Tổng sốacid béo nog-
+[y588] Glucid(Carbohydrate)g40.71(Total saturated fatty acid)
+[y576] Celluloza(Fiber)g0.71Palmitic (C16:0)g-
+[y560] Tro(Ash)g1.11Margaric (C17:0)g-
+[y548] Đường tổng số(Sugar)g-Stearic (C18:0)g-
+[y532] Galactoza(Galactose)g-Arachidic (C20:0)g-
+[y520] Maltoza(Maltose)g-Behenic (22:0)g-
+[y504] Lactoza(Lactose)g-Lignoceric (C24:0)g-
+[y492] Fructoza(Fructose)TS acid béo không no 1 nốiđôi
+[y488] g-g-
+[y476] Glucoza(Glucose)g-(Total monounsaturated fatty acid)
+[y460] Sacaroza(Sucrose)g-Myristoleic (C14:1)g-
+[y448] Calci(Calcium)mg-Palmitoleic (C16:1)g-
+[y432] Sắt(Iron)mg-Oleic (C18:1)g-
+[y420] MagiêMagiê(Magnesium)(Magnesium)mgmg--TS acid béo không no nhiTS acid béo không no nhiềều nu nốốiiđđôiôigg--
+[y404] Mangan(Manganese)mg-(Total polyunsaturated fatty acid)--
+[y392] Phospho(Phosphorous)mg-Linoleic (C18:2 n6)g-
+[y376] Kali(Potassium)mg-Linolenic (C18:2 n3)g-
+[y364] Natri(Sodium)mg-Arachidonic (C20:4)g-
+[y348] Kẽm(Zinc)mg-Eicosapentaenoic (C20:5 n3)g-
+[y336] Đồng(Copper)μg-Docosahexaenoic (C22:6 n3)g-
+[y320] Selen(Selenium)μg-TS acid béo trans(Total trans fatty acid)g-
+[y308] Vitamin C(Ascorbic acid)mg01Cholesterolmg01
+[y292] Vitamin B1(Thiamine)mg-Phytosterolmg-
+[y280] Vitamin B2(Riboflavin)mg-Lysinmg-
+[y264] Vitamin PP(Niacin)mg-Methioninmg-
+[y252] Vitamin B5(Pantothenic acid)mg-Tryptophanmg-
+[y236] Vitamin B6(Pyridoxine)mg-Phenylalaninmg-
+[y224] Folat(Folate)μg-Threoninmg-
+[y208] Vitamin B9(Folic acid)μg-Valinmg-
+[y196] Vitamin H(Biotin)μg-Leucinmg-
+[y180] Vitamin B12(Cyanocobalamine)μg-Isoleucinmg-
+[y168] Vitamin A(Retinol)μg01Argininmg-
+[y152] Vitamin D(Calciferol)μg0.003Histidinmg-
+[y140] Vitamin E(Alpha-tocopherol)mg-Cystinmg-
+[y124] Vitamin K(Phylloquinone)μg03Tyrosinmg-
+[y112] Beta-carotenμg03Alaninmg-
+[y96] Alpha-carotenμg03Acid asparticmg-
+[y84] Beta-cryptoxanthinμg03Acid glutamicmg-
+[y68] Lycopenμg03Glycinmg-
+[y56] Lutein + Zeaxanthinμg03Prolinmg-
+[y40] Purinmg04Serinmg-
+[y16] 14
+
+
+====PAGE 28====
+[y736] Tªn thùc phÈm (Vietnamese):STT:15
+[y732] Báng ng«
+[y720] Tªn tiÕng Anh (English):Corn flakesM· sè:1015
+[y708] Thμnh phÇn dinh d−ìng trong 100g phÇn ¨n ®−îc (100 grams edible portion)Th¶i bá (%):
+[y704] 0.0
+[y684] Thμnh phÇn dinh d−ìngĐVHμm lượngTLTKThμnh phÇn dinh d−ìngĐVHμm lượngTLTK
+[y672] (Nutrients)(Unit)(Value)(Source)(Nutrients)(Unit)(Value)(Source)
+[y660] Nước(Water)g3.01Tổng sốisoflavon(Total isoflavone)mg-
+[y644] Năng lượng(Energy)KCal372Daidzeinmg-
+[y632] KJ1556Genisteinmg-
+[y616] Proteing8.61Glycetinmg-
+[y604] Lipid(Fat)g1.61Tổng sốacid béo nog-
+[y588] Glucid(Carbohydrate)g80.81(Total saturated fatty acid)
+[y576] Celluloza(Fiber)g3.41Palmitic (C16:0)g-
+[y560] Tro(Ash)g2.61Margaric (C17:0)g-
+[y548] Đường tổng số(Sugar)g-Stearic (C18:0)g-
+[y532] Galactoza(Galactose)g-Arachidic (C20:0)g-
+[y520] Maltoza(Maltose)g-Behenic (22:0)g-
+[y504] Lactoza(Lactose)g-Lignoceric (C24:0)g-
+[y492] Fructoza(Fructose)TS acid béo không no 1 nốiđôi
+[y488] g-g-
+[y476] Glucoza(Glucose)g-(Total monounsaturated fatty acid)
+[y460] Sacaroza(Sucrose)g-Myristoleic (C14:1)g-
+[y448] Calci(Calcium)mg31Palmitoleic (C16:1)g-
+[y432] Sắt(Iron)mg0.601Oleic (C18:1)g-
+[y420] MagiêMagiê(Magnesium)(Magnesium)mgmg--TS acid béo không no nhiTS acid béo không no nhiềều nu nốốiiđđôiôigg--
+[y404] Mangan(Manganese)mg-(Total polyunsaturated fatty acid)
+[y392] Phospho(Phosphorous)mg471Linoleic (C18:2 n6)g-
+[y376] Kali(Potassium)mg-Linolenic (C18:2 n3)g-
+[y364] Natri(Sodium)mg-Arachidonic (C20:4)g-
+[y348] Kẽm(Zinc)mg-Eicosapentaenoic (C20:5 n3)g-
+[y336] Đồng(Copper)μg-Docosahexaenoic (C22:6 n3)g-
+[y320] Selen(Selenium)μg-TS acid béo trans(Total trans fatty acid)g-
+[y308] Vitamin C(Ascorbic acid)mg01Cholesterolmg01
+[y292] Vitamin B1(Thiamine)mg0.021Phytosterolmg-
+[y280] Vitamin B2(Riboflavin)mg0.031Lysinmg2301
+[y264] Vitamin PP(Niacin)mg0.61Methioninmg1661
+[y252] Vitamin B5(Pantothenic acid)mg-Tryptophanmg611
+[y236] Vitamin B6(Pyridoxine)mg-Phenylalaninmg4211
+[y224] Folat(Folate)μg-Threoninmg3101
+[y208] Vitamin B9(Folic acid)μg-Valinmg4181
+[y196] Vitamin H(Biotin)μg-Leucinmg10811
+[y180] Vitamin B12(Cyanocobalamine)μg-Isoleucinmg3161
+[y168] Vitamin A(Retinol)μg01Argininmg3621
+[y152] Vitamin D(Calciferol)μg-Histidinmg2351
+[y140] Vitamin E(Alpha-tocopherol)mg-Cystinmg1341
+[y124] Vitamin K(Phylloquinone)μg-Tyrosinmg3301
+[y112] Beta-carotenμg03Alaninmg6501
+[y96] Alpha-carotenμg03Acid asparticmg5411
+[y84] Beta-cryptoxanthinμg03Acid glutamicmg16341
+[y68] Lycopenμg03Glycinmg3191
+[y56] Lutein + Zeaxanthinμg03Prolinmg7711
+[y40] Purinmg-Serinmg4291
+[y16] 15
+
+
+====PAGE 29====
+[y736] Tªn thùc phÈm (Vietnamese):STT:16
+[y732] Bét g¹o nÕp
+[y720] Tªn tiÕng Anh (English):Glutinous rice flourM· sè:1016
+[y708] Thμnh phÇn dinh d−ìng trong 100g phÇn ¨n ®−îc (100 grams edible portion)Th¶i bá (%):
+[y704] 0.0
+[y684] Thμnh phÇn dinh d−ìngĐVHμm lượngTLTKThμnh phÇn dinh d−ìngĐVHμm lượngTLTK
+[y672] (Nutrients)(Unit)(Value)(Source)(Nutrients)(Unit)(Value)(Source)
+[y660] Nước(Water)g10.01Tổng sốisoflavon(Total isoflavone)mg-3
+[y644] Năng lượng(Energy)KCal362Daidzeinmg-
+[y632] KJ1516Genisteinmg-
+[y616] Proteing8.21Glycetinmg-
+[y604] Lipid(Fat)g1.61Tổng sốacid béo nog0.1103
+[y588] Glucid(Carbohydrate)g78.81(Total saturated fatty acid)
+[y576] Celluloza(Fiber)g0.61Palmitic (C16:0)g0.0903
+[y560] Tro(Ash)g0.81Margaric (C17:0)g0.0003
+[y548] Đường tổng số(Sugar)g-Stearic (C18:0)g0.0103
+[y532] Galactoza(Galactose)g-Arachidic (C20:0)g0.0003
+[y520] Maltoza(Maltose)g-Behenic (22:0)g0.0003
+[y504] Lactoza(Lactose)g-Lignoceric (C24:0)g0.0003
+[y492] Fructoza(Fructose)TS acid béo không no 1 nốiđôi
+[y488] g-g0.2003
+[y476] Glucoza(Glucose)g-(Total monounsaturated fatty acid)
+[y460] Sacaroza(Sucrose)g-Myristoleic (C14:1)g0.0003
+[y448] Calci(Calcium)mg121Palmitoleic (C16:1)g0.0003
+[y432] Sắt(Iron)mg0.801Oleic (C18:1)g0.1903
+[y420] MagiêMagiê(Magnesium)(Magnesium)mgmg181833TS acid béo không no nhiTS acid béo không no nhiềều nu nốốiiđđôiôigg0 1900.19033
+[y404] Mangan(Manganese)mg1.1403(Total polyunsaturated fatty acid)
+[y392] Phospho(Phosphorous)mg1481Linoleic (C18:2 n6)g0.1803
+[y376] Kali(Potassium)mg2933Linolenic (C18:2 n3)g0.0103
+[y364] Natri(Sodium)mg33Arachidonic (C20:4)g0.0003
+[y348] Kẽm(Zinc)mg2.293Eicosapentaenoic (C20:5 n3)g0.0003
+[y336] Đồng(Copper)μg2913Docosahexaenoic (C22:6 n3)g0.0003
+[y320] Selen(Selenium)μg15.73TS acid béo trans(Total trans fatty acid)g-
+[y308] Vitamin C(Ascorbic acid)mg01Cholesterolmg01
+[y292] Vitamin B1(Thiamine)mg0.101Phytosterolmg-
+[y280] Vitamin B2(Riboflavin)mg0.021Lysinmg2403
+[y264] Vitamin PP(Niacin)mg1.71Methioninmg1563
+[y252] Vitamin B5(Pantothenic acid)mg0.2953Tryptophanmg773
+[y236] Vitamin B6(Pyridoxine)mg0.1113Phenylalaninmg3553
+[y224] Folat(Folate)μg73Threoninmg2383
+[y208] Vitamin B9(Folic acid)μg03Valinmg4063
+[y196] Vitamin H(Biotin)μg-Leucinmg5503
+[y180] Vitamin B12(Cyanocobalamine)μg03Isoleucinmg2873
+[y168] Vitamin A(Retinol)μg01Argininmg5543
+[y152] Vitamin D(Calciferol)μg-Histidinmg1563
+[y140] Vitamin E(Alpha-tocopherol)mg-Cystinmg1373
+[y124] Vitamin K(Phylloquinone)μg-Tyrosinmg2233
+[y112] Beta-carotenμg03Alaninmg3863
+[y96] Alpha-carotenμg03Acid asparticmg6253
+[y84] Beta-cryptoxanthinμg03Acid glutamicmg12963
+[y68] Lycopenμg03Glycinmg3033
+[y56] Lutein + Zeaxanthinμg03Prolinmg3133
+[y40] Purinmg-Serinmg3493
+[y16] 16
+
+
+====PAGE 30====
+[y736] Tªn thùc phÈm (Vietnamese):STT:17
+[y732] Bét g¹o tÎ
+[y720] Tªn tiÕng Anh (English):Rice ordinary flourM· sè:1017
+[y708] Thμnh phÇn dinh d−ìng trong 100g phÇn ¨n ®−îc (100 grams edible portion)Th¶i bá (%):
+[y704] 0.0
+[y684] Thμnh phÇn dinh d−ìngĐVHμm lượngTLTKThμnh phÇn dinh d−ìngĐVHμm lượngTLTK
+[y672] (Nutrients)(Unit)(Value)(Source)(Nutrients)(Unit)(Value)(Source)
+[y660] Nước(Water)g10.01Tổng sốisoflavon(Total isoflavone)mg-
+[y644] Năng lượng(Energy)KCal359Daidzeinmg-
+[y632] KJ1501Genisteinmg-
+[y616] Proteing6.61Glycetinmg-
+[y604] Lipid(Fat)g0.41Tổng sốacid béo nog0.3903
+[y588] Glucid(Carbohydrate)g82.21(Total saturated fatty acid)
+[y576] Celluloza(Fiber)g0.41Palmitic (C16:0)g0.3503
+[y560] Tro(Ash)g0.41Margaric (C17:0)g0.0003
+[y548] Đường tổng số(Sugar)g-Stearic (C18:0)g0.0303
+[y532] Galactoza(Galactose)g-Arachidic (C20:0)g0.0003
+[y520] Maltoza(Maltose)g-Behenic (22:0)g0.0003
+[y504] Lactoza(Lactose)g-Lignoceric (C24:0)g0.0003
+[y492] Fructoza(Fructose)TS acid béo không no 1 nốiđôi
+[y488] g-g0.4403
+[y476] Glucoza(Glucose)g-(Total monounsaturated fatty acid)
+[y460] Sacaroza(Sucrose)g-Myristoleic (C14:1)g0.0003
+[y448] Calci(Calcium)mg241Palmitoleic (C16:1)g0.0103
+[y432] Sắt(Iron)mg1.901Oleic (C18:1)g0.4403
+[y420] MagiêMagiê(Magnesium)(Magnesium)mgmg353533TS acid béo không no nhiTS acid béo không no nhiềều nu nốốiiđđôiôigg0 3800.38033
+[y404] Mangan(Manganese)mg1.2003(Total polyunsaturated fatty acid)
+[y392] Phospho(Phosphorous)mg1351Linoleic (C18:2 n6)g0.3103
+[y376] Kali(Potassium)mg763Linolenic (C18:2 n3)g0.0703
+[y364] Natri(Sodium)mg03Arachidonic (C20:4)g0.0003
+[y348] Kẽm(Zinc)mg0.803Eicosapentaenoic (C20:5 n3)g0.0003
+[y336] Đồng(Copper)μg1303Docosahexaenoic (C22:6 n3)g0.0003
+[y320] Selen(Selenium)μg15.13TS acid béo trans(Total trans fatty acid)g-
+[y308] Vitamin C(Ascorbic acid)mg01Cholesterolmg01
+[y292] Vitamin B1(Thiamine)mg0.081Phytosterolmg-
+[y280] Vitamin B2(Riboflavin)mg0.051Lysinmg2073
+[y264] Vitamin PP(Niacin)mg2.11Methioninmg1443
+[y252] Vitamin B5(Pantothenic acid)mg0.8193Tryptophanmg723
+[y236] Vitamin B6(Pyridoxine)mg0.4363Phenylalaninmg3173
+[y224] Folat(Folate)μg43Threoninmg2103
+[y208] Vitamin B9(Folic acid)μg03Valinmg3483
+[y196] Vitamin H(Biotin)μg15Leucinmg4883
+[y180] Vitamin B12(Cyanocobalamine)μg03Isoleucinmg2443
+[y168] Vitamin A(Retinol)μg01Argininmg5163
+[y152] Vitamin D(Calciferol)μg-Histidinmg1493
+[y140] Vitamin E(Alpha-tocopherol)mg0.113Cystinmg1073
+[y124] Vitamin K(Phylloquinone)μg03Tyrosinmg3143
+[y112] Beta-carotenμg03Alaninmg3323
+[y96] Alpha-carotenμg03Acid asparticmg5493
+[y84] Beta-cryptoxanthinμg03Acid glutamicmg10973
+[y68] Lycopenμg03Glycinmg2673
+[y56] Lutein + Zeaxanthinμg03Prolinmg2783
+[y40] Purinmg-Serinmg3103
+[y16] 17

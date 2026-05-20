@@ -15,6 +15,7 @@ export async function signSession(payload: {
   sub: string;
   email: string;
   role: string;
+  sid: string;
 }): Promise<string> {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
@@ -25,9 +26,9 @@ export async function signSession(payload: {
 
 export async function verifySession(
   token: string
-): Promise<{ sub: string; email: string; role: string }> {
+): Promise<{ sub: string; email: string; role: string; sid: string }> {
   const { payload } = await jwtVerify(token, secret(), {
     algorithms: ["HS256"],
   });
-  return payload as { sub: string; email: string; role: string };
+  return payload as { sub: string; email: string; role: string; sid: string };
 }

@@ -41,6 +41,9 @@ yarn-error.log*
 next-env.d.ts
 
 # database
-prisma/*.db
-prisma/*.db-shm
-prisma/*.db-wal
+*.db
+*.db-shm
+*.db-wal
+
+# script artifacts (large extraction files, not needed for app)
+scripts/docx-extract/

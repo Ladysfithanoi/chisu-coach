@@ -145,12 +145,20 @@ const INITIAL_FORM: FormState = {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function DietForm() {
+export default function DietForm({ userName }: { userName: string }) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [result, setResult] = useState<NutritionResult | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
   const [loggingOut, setLoggingOut] = useState(false);
+
+  // Change-password modal state
+  const [showChangePwd, setShowChangePwd] = useState(false);
+  const [cpCurrent, setCpCurrent] = useState("");
+  const [cpNew, setCpNew] = useState("");
+  const [cpConfirm, setCpConfirm] = useState("");
+  const [cpError, setCpError] = useState("");
+  const [cpSaving, setCpSaving] = useState(false);
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -225,39 +233,213 @@ export default function DietForm() {
     }
   }
 
+  function openChangePwd() {
+    setCpCurrent(""); setCpNew(""); setCpConfirm(""); setCpError("");
+    setShowChangePwd(true);
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (cpSaving) return;
+    setCpSaving(true);
+    setCpError("");
+
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword: cpCurrent, newPassword: cpNew, confirmPassword: cpConfirm }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+
+      if (!res.ok) { setCpError(data.error ?? "Đã có lỗi xảy ra"); return; }
+
+      router.push("/login");
+      router.refresh();
+    } catch {
+      setCpError("Lỗi kết nối, vui lòng thử lại");
+    } finally {
+      setCpSaving(false);
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-white py-10 px-4">
+    <>
+      {/* ── Change Password Modal ── */}
+      {showChangePwd && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background: "rgba(18,16,13,0.5)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowChangePwd(false); }}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl p-6 shadow-2xl"
+            style={{ background: "white", border: "1px solid rgba(18,16,13,0.08)" }}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-base font-bold" style={{ color: "#12100d" }}>Đổi mật khẩu</h3>
+              <button
+                onClick={() => setShowChangePwd(false)}
+                className="w-7 h-7 flex items-center justify-center rounded-lg"
+                style={{ color: "rgba(18,16,13,0.4)", background: "rgba(18,16,13,0.05)" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div>
+                <label className="dp-label">Mật khẩu hiện tại</label>
+                <input
+                  type="password"
+                  value={cpCurrent}
+                  onChange={(e) => { setCpCurrent(e.target.value); setCpError(""); }}
+                  placeholder="••••••••"
+                  required
+                  className="dp-input"
+                />
+              </div>
+              <div>
+                <label className="dp-label">Mật khẩu mới</label>
+                <input
+                  type="password"
+                  value={cpNew}
+                  onChange={(e) => { setCpNew(e.target.value); setCpError(""); }}
+                  placeholder="Tối thiểu 6 ký tự"
+                  required
+                  minLength={6}
+                  className="dp-input"
+                />
+              </div>
+              <div>
+                <label className="dp-label">Xác nhận mật khẩu mới</label>
+                <input
+                  type="password"
+                  value={cpConfirm}
+                  onChange={(e) => { setCpConfirm(e.target.value); setCpError(""); }}
+                  placeholder="••••••••"
+                  required
+                  className="dp-input"
+                />
+              </div>
+
+              {cpError && (
+                <div
+                  className="rounded-xl px-4 py-3 text-sm font-medium flex items-center gap-2"
+                  style={{ background: "rgba(235,9,21,0.05)", border: "1px solid rgba(235,9,21,0.2)", color: "#eb0915" }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                  {cpError}
+                </div>
+              )}
+
+              <div
+                className="rounded-xl px-4 py-2.5 text-xs flex items-start gap-2"
+                style={{ background: "rgba(235,9,21,0.04)", border: "1px solid rgba(235,9,21,0.12)", color: "rgba(18,16,13,0.55)" }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#eb0915" strokeWidth="2" className="shrink-0 mt-0.5">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                Sau khi đổi mật khẩu, bạn sẽ được đăng xuất và cần đăng nhập lại.
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowChangePwd(false)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                  style={{ border: "1px solid rgba(18,16,13,0.12)", color: "rgba(18,16,13,0.6)", background: "transparent" }}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={cpSaving}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
+                  style={{
+                    background: cpSaving ? "rgba(235,9,21,0.55)" : "#eb0915",
+                    color: "white",
+                    cursor: cpSaving ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {cpSaving ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56" strokeLinecap="round"/>
+                      </svg>
+                      Đang lưu...
+                    </span>
+                  ) : "Đổi mật khẩu"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+    <div className="min-h-screen bg-white py-6 md:py-10 px-4">
       <div className="max-w-2xl mx-auto">
 
         {/* ── Header ── */}
-        <header className="mb-8 flex items-center justify-between">
+        <header
+          className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6"
+          style={{ borderBottom: "1px solid rgba(18,16,13,0.08)" }}
+        >
           <div>
-            <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#12100d" }}>
-              Diet Plan
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight leading-tight" style={{ color: "#12100d" }}>
+              Diet Plan{" "}
+              <span style={{ color: "#eb0915" }}>của {userName}</span>
             </h1>
-            <p className="mt-0.5 text-sm" style={{ color: "rgba(18,16,13,0.5)" }}>
+            <p className="mt-1 text-sm" style={{ color: "rgba(18,16,13,0.5)" }}>
               Máy tính dinh dưỡng chuyên sâu
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            disabled={loggingOut}
-            className="flex items-center gap-1.5 text-sm font-medium px-3.5 py-2 rounded-xl transition-all"
-            style={{
-              border: "1px solid rgba(18,16,13,0.12)",
-              color: "rgba(18,16,13,0.55)",
-              background: "transparent",
-            }}
-            title="Đăng xuất"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-              <polyline points="16 17 21 12 16 7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
-            {loggingOut ? "..." : "Đăng xuất"}
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={openChangePwd}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+              style={{
+                background: "rgba(18,16,13,0.05)",
+                color: "rgba(18,16,13,0.7)",
+                border: "1px solid rgba(18,16,13,0.1)",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(18,16,13,0.1)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(18,16,13,0.05)")}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              Đổi mật khẩu
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+              style={{
+                background: "rgba(235,9,21,0.06)",
+                color: "#eb0915",
+                border: "1px solid rgba(235,9,21,0.2)",
+                cursor: loggingOut ? "not-allowed" : "pointer",
+                opacity: loggingOut ? 0.6 : 1,
+              }}
+              onMouseEnter={(e) => { if (!loggingOut) e.currentTarget.style.background = "rgba(235,9,21,0.12)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(235,9,21,0.06)"; }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              {loggingOut ? "Đang xuất..." : "Đăng xuất"}
+            </button>
+          </div>
         </header>
 
         {/* ── Form Card ── */}
@@ -435,14 +617,14 @@ export default function DietForm() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
               <StatBox label="TDEE" value={`${result.tdee.toLocaleString("vi-VN")} kcal`}
                 sub="Năng lượng duy trì" />
               <StatBox label="DER — Mục tiêu" value={`${result.der.toLocaleString("vi-VN")} kcal`}
                 sub="Calo cần nạp mỗi ngày" highlight />
             </div>
 
-            <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
               <MacroBox label="Protein" value={result.protein} unit="g"
                 bg="rgba(59,130,246,0.07)" color="#1d4ed8" />
               <MacroBox label="Fat" value={result.fat} unit="g"
@@ -476,6 +658,7 @@ export default function DietForm() {
 
       </div>
     </div>
+    </>
   );
 }
 

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import type { NutritionResult } from "./DietForm";
+import { FOODS, type FoodItem } from "@/lib/foods-data";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,6 +29,13 @@ interface ManualFood {
 type Tab = "ai" | "manual";
 type MealCount = 2 | 3 | 4 | 5;
 
+interface IngredientRow {
+  id: string;
+  query: string;
+  food: FoodItem | null;
+  grams: number;
+}
+
 // ─── Utils ────────────────────────────────────────────────────────────────────
 
 function stripMarkdown(text: string): string {
@@ -41,11 +49,42 @@ function parseAiResponse(raw: string): AiMeal[] {
   return (parsed as Record<string, unknown>[]).map((item, i) => ({
     mealName: String(item.mealName ?? `Bữa ${i + 1}`),
     name: String(item.name ?? ""),
-    calories: Number(item.calories ?? 0),
-    protein: Number(item.protein ?? 0),
-    fat: Number(item.fat ?? 0),
-    carbs: Number(item.carbs ?? 0),
+    calories: Math.round(Number(item.calories ?? 0)),
+    protein: Math.round(Number(item.protein ?? 0)),
+    fat: Math.round(Number(item.fat ?? 0)),
+    carbs: Math.round(Number(item.carbs ?? 0)),
   }));
+}
+
+// ─── Food search helpers ──────────────────────────────────────────────────────
+
+function newRow(): IngredientRow {
+  return { id: `${Date.now()}-${Math.random()}`, query: "", food: null, grams: 100 };
+}
+
+function computeRowMacros(food: FoodItem, grams: number) {
+  const r = grams / 100;
+  return {
+    calories: Math.round(food.calories * r),
+    protein: Math.round(food.protein * r),
+    fat: Math.round(food.fat * r),
+    carbs: Math.round(food.carbs * r),
+  };
+}
+
+function searchFoods(query: string): FoodItem[] {
+  if (!query.trim()) return [];
+  const q = query.toLowerCase().trim();
+  return FOODS.filter(f =>
+    f.name.toLowerCase().includes(q) ||
+    (f.nameEn ?? '').toLowerCase().includes(q)
+  )
+    .sort((a, b) => {
+      const aS = a.name.toLowerCase().startsWith(q) || (a.nameEn ?? '').toLowerCase().startsWith(q);
+      const bS = b.name.toLowerCase().startsWith(q) || (b.nameEn ?? '').toLowerCase().startsWith(q);
+      return aS === bS ? 0 : aS ? -1 : 1;
+    })
+    .slice(0, 8);
 }
 
 // ─── TrackingBar ──────────────────────────────────────────────────────────────
@@ -62,7 +101,7 @@ function TrackingBar({
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
         <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "rgba(18,16,13,0.5)" }}>{label}</span>
         <span style={{ fontSize: "0.75rem", color: over ? "#eb0915" : "rgba(18,16,13,0.38)" }}>
-          {over ? `+${current - target} vượt` : `còn ${target - current}`}
+          {over ? `+${Math.round(current - target)} vượt` : `còn ${Math.round(target - current)}`}
         </span>
       </div>
       <div style={{ height: "6px", borderRadius: "99px", background: "rgba(18,16,13,0.08)" }}>
@@ -99,9 +138,9 @@ function AiMealCard({ meal }: { meal: AiMeal }) {
           {meal.name}
         </p>
         <p className="flex-shrink-0 text-right" style={{ fontSize: "0.75rem", color: "rgba(18,16,13,0.45)", lineHeight: 1.8 }}>
-          P: {meal.protein}g<br />
-          F: {meal.fat}g<br />
-          C: {meal.carbs}g
+          P: {Math.round(meal.protein)}g<br />
+          F: {Math.round(meal.fat)}g<br />
+          C: {Math.round(meal.carbs)}g
         </p>
       </div>
     </div>
@@ -142,6 +181,7 @@ function PdfTemplate({
     fontFamily: "Montserrat, sans-serif",
   };
   const tdRight: React.CSSProperties = { ...td, textAlign: "right" };
+  const tdCenter: React.CSSProperties = { ...td, textAlign: "center" };
   const tdBold: React.CSSProperties = { ...td, fontWeight: 700 };
 
   // Grand total across all AI meals
@@ -203,6 +243,7 @@ function PdfTemplate({
         <div style={{ fontSize: "10px", fontWeight: 700, color: "rgba(18,16,13,0.38)", textTransform: "uppercase", letterSpacing: "0.09em", marginBottom: "10px" }}>
           Mục tiêu dinh dưỡng hàng ngày
         </div>
+        <div className="w-full overflow-x-auto">
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
@@ -224,23 +265,25 @@ function PdfTemplate({
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* ── AI Meal table (flat — one row per meal) ── */}
       {aiMeals && aiMeals.length > 0 && (
         <div style={{ padding: "0 40px 24px" }}>
           <div style={{ fontSize: "10px", fontWeight: 700, color: "rgba(18,16,13,0.38)", textTransform: "uppercase", letterSpacing: "0.09em", marginBottom: "10px" }}>
-            Kế hoạch thực đơn AI
+            Kế hoạch thực đơn
           </div>
+          <div className="w-full overflow-x-auto">
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
                 <th style={{ ...th, whiteSpace: "nowrap" }}>Bữa ăn</th>
                 <th style={thDark}>Thực đơn chi tiết</th>
-                <th style={{ ...thDark, textAlign: "right" }}>Calo</th>
-                <th style={{ ...thDark, textAlign: "right" }}>P(g)</th>
-                <th style={{ ...thDark, textAlign: "right" }}>F(g)</th>
-                <th style={{ ...thDark, textAlign: "right" }}>C(g)</th>
+                <th style={{ ...thDark, textAlign: "center" }}>Calo</th>
+                <th style={{ ...thDark, textAlign: "center" }}>P(g)</th>
+                <th style={{ ...thDark, textAlign: "center" }}>F(g)</th>
+                <th style={{ ...thDark, textAlign: "center" }}>C(g)</th>
               </tr>
             </thead>
             <tbody>
@@ -248,23 +291,24 @@ function PdfTemplate({
                 <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "rgba(18,16,13,0.018)" }}>
                   <td style={{ ...tdBold, color: "#eb0915", whiteSpace: "nowrap" }}>{meal.mealName}</td>
                   <td style={td}>{meal.name}</td>
-                  <td style={{ ...tdRight, fontWeight: 600 }}>{meal.calories}</td>
-                  <td style={tdRight}>{meal.protein}</td>
-                  <td style={tdRight}>{meal.fat}</td>
-                  <td style={tdRight}>{meal.carbs}</td>
+                  <td style={{ ...tdCenter, fontWeight: 600 }}>{Math.round(meal.calories)}</td>
+                  <td style={tdCenter}>{Math.round(meal.protein)}</td>
+                  <td style={tdCenter}>{Math.round(meal.fat)}</td>
+                  <td style={tdCenter}>{Math.round(meal.carbs)}</td>
                 </tr>
               ))}
               {aiGrand && (
                 <tr style={{ background: "rgba(235,9,21,0.05)" }}>
                   <td style={{ ...tdBold, color: "#eb0915" }} colSpan={2}>Tổng cả ngày</td>
-                  <td style={{ ...tdRight, fontWeight: 700, color: "#eb0915" }}>{aiGrand.cal}</td>
-                  <td style={{ ...tdRight, fontWeight: 700, color: "#eb0915" }}>{aiGrand.p}</td>
-                  <td style={{ ...tdRight, fontWeight: 700, color: "#eb0915" }}>{aiGrand.f}</td>
-                  <td style={{ ...tdRight, fontWeight: 700, color: "#eb0915" }}>{aiGrand.c}</td>
+                  <td style={{ ...tdCenter, fontWeight: 700, color: "#eb0915" }}>{Math.round(aiGrand.cal)}</td>
+                  <td style={{ ...tdCenter, fontWeight: 700, color: "#eb0915" }}>{Math.round(aiGrand.p)}</td>
+                  <td style={{ ...tdCenter, fontWeight: 700, color: "#eb0915" }}>{Math.round(aiGrand.f)}</td>
+                  <td style={{ ...tdCenter, fontWeight: 700, color: "#eb0915" }}>{Math.round(aiGrand.c)}</td>
                 </tr>
               )}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -274,35 +318,37 @@ function PdfTemplate({
           <div style={{ fontSize: "10px", fontWeight: 700, color: "rgba(18,16,13,0.38)", textTransform: "uppercase", letterSpacing: "0.09em", marginBottom: "10px" }}>
             Thực đơn tự nhập
           </div>
+          <div className="w-full overflow-x-auto">
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
                 <th style={th}>Món ăn</th>
-                <th style={{ ...th, textAlign: "right" }}>Calo</th>
-                <th style={{ ...th, textAlign: "right" }}>P(g)</th>
-                <th style={{ ...th, textAlign: "right" }}>F(g)</th>
-                <th style={{ ...th, textAlign: "right" }}>C(g)</th>
+                <th style={{ ...th, textAlign: "center" }}>Calo</th>
+                <th style={{ ...th, textAlign: "center" }}>P(g)</th>
+                <th style={{ ...th, textAlign: "center" }}>F(g)</th>
+                <th style={{ ...th, textAlign: "center" }}>C(g)</th>
               </tr>
             </thead>
             <tbody>
               {manualFoods.map((food, i) => (
                 <tr key={food.id} style={{ background: i % 2 === 0 ? "#fff" : "rgba(18,16,13,0.018)" }}>
                   <td style={td}>{food.name}</td>
-                  <td style={{ ...tdRight, fontWeight: 600 }}>{food.calories}</td>
-                  <td style={tdRight}>{food.protein}</td>
-                  <td style={tdRight}>{food.fat}</td>
-                  <td style={tdRight}>{food.carbs}</td>
+                  <td style={{ ...tdCenter, fontWeight: 600 }}>{Math.round(food.calories)}</td>
+                  <td style={tdCenter}>{Math.round(food.protein)}</td>
+                  <td style={tdCenter}>{Math.round(food.fat)}</td>
+                  <td style={tdCenter}>{Math.round(food.carbs)}</td>
                 </tr>
               ))}
               <tr style={{ background: "rgba(235,9,21,0.04)" }}>
                 <td style={{ ...tdBold, color: "#eb0915" }}>Tổng ngày</td>
-                <td style={{ ...tdRight, fontWeight: 700, color: "#eb0915" }}>{manualTotal.cal}</td>
-                <td style={{ ...tdRight, fontWeight: 700, color: "#eb0915" }}>{manualTotal.p}</td>
-                <td style={{ ...tdRight, fontWeight: 700, color: "#eb0915" }}>{manualTotal.f}</td>
-                <td style={{ ...tdRight, fontWeight: 700, color: "#eb0915" }}>{manualTotal.c}</td>
+                <td style={{ ...tdCenter, fontWeight: 700, color: "#eb0915" }}>{Math.round(manualTotal.cal)}</td>
+                <td style={{ ...tdCenter, fontWeight: 700, color: "#eb0915" }}>{Math.round(manualTotal.p)}</td>
+                <td style={{ ...tdCenter, fontWeight: 700, color: "#eb0915" }}>{Math.round(manualTotal.f)}</td>
+                <td style={{ ...tdCenter, fontWeight: 700, color: "#eb0915" }}>{Math.round(manualTotal.c)}</td>
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -321,6 +367,119 @@ function PdfTemplate({
           DIET PLAN
         </span>
       </div>
+    </div>
+  );
+}
+
+// ─── IngredientSearchRow ──────────────────────────────────────────────────────
+
+function IngredientSearchRow({
+  row,
+  isActive,
+  canRemove,
+  onQueryChange,
+  onSelect,
+  onGramsChange,
+  onRemove,
+  onFocus,
+  onBlur,
+}: {
+  row: IngredientRow;
+  isActive: boolean;
+  canRemove: boolean;
+  onQueryChange: (val: string) => void;
+  onSelect: (food: FoodItem) => void;
+  onGramsChange: (g: number) => void;
+  onRemove: () => void;
+  onFocus: () => void;
+  onBlur: () => void;
+}) {
+  const results = isActive && row.query ? searchFoods(row.query) : [];
+  const macros = row.food ? computeRowMacros(row.food, row.grams) : null;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex gap-2 items-center">
+        {/* Search */}
+        <div className="relative flex-1 min-w-0">
+          <input
+            type="text"
+            placeholder="Tìm nguyên liệu... (VD: cá lóc, gạo lứt)"
+            value={row.query}
+            onChange={e => onQueryChange(e.target.value)}
+            onFocus={onFocus}
+            onBlur={onBlur}
+            className="dp-input w-full"
+            autoComplete="off"
+          />
+          {results.length > 0 && (
+            <div
+              className="absolute z-50 left-0 right-0 top-full mt-1 rounded-xl overflow-hidden shadow-xl"
+              style={{ background: "#fff", border: "1px solid rgba(18,16,13,0.12)" }}
+            >
+              {results.map(food => (
+                <button
+                  key={food.name}
+                  type="button"
+                  onMouseDown={() => onSelect(food)}
+                  className="w-full text-left px-3 py-2.5 transition-colors"
+                  style={{ borderBottom: "1px solid rgba(18,16,13,0.05)" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(235,9,21,0.04)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "")}
+                >
+                  <span className="text-sm font-semibold" style={{ color: "#12100d" }}>
+                    {food.name}
+                  </span>
+                  <span className="text-xs ml-2" style={{ color: "rgba(18,16,13,0.4)" }}>
+                    {food.calories} kcal · P:{food.protein}g F:{food.fat}g C:{food.carbs}g /100g
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* Gram input */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <input
+            type="number"
+            value={row.grams}
+            min={1}
+            onChange={e => onGramsChange(Math.max(1, parseInt(e.target.value) || 100))}
+            className="dp-input text-center"
+            style={{ width: "68px" }}
+          />
+          <span className="text-xs font-semibold" style={{ color: "rgba(18,16,13,0.4)" }}>g</span>
+        </div>
+        {/* Remove */}
+        {canRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-lg"
+            style={{ background: "rgba(235,9,21,0.08)", color: "#eb0915" }}
+            aria-label="Xoá nguyên liệu"
+          >
+            ×
+          </button>
+        )}
+      </div>
+      {/* Per-row macro preview */}
+      {macros && (
+        <div className="flex gap-3 pl-1 flex-wrap">
+          {(
+            [
+              { label: "Calo", value: `${macros.calories} kcal`, color: "#eb0915" },
+              { label: "P", value: `${macros.protein}g`, color: "#1d4ed8" },
+              { label: "F", value: `${macros.fat}g`, color: "#b45309" },
+              { label: "C", value: `${macros.carbs}g`, color: "#065f46" },
+            ] as const
+          ).map(item => (
+            <span key={item.label} className="text-xs font-semibold" style={{ color: item.color }}>
+              {item.label}: {item.value}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -368,8 +527,8 @@ export default function MealPlanSection({ result }: { result: NutritionResult })
   const [aiMeals, setAiMeals] = useState<AiMeal[] | null>(null);
 
   const [manualFoods, setManualFoods] = useState<ManualFood[]>([]);
-  const [manualForm, setManualForm] = useState({ name: "", calories: "", protein: "", fat: "", carbs: "" });
-  const [manualError, setManualError] = useState<string | null>(null);
+  const [rows, setRows] = useState<IngredientRow[]>(() => [newRow()]);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
   const [pdfLoading, setPdfLoading] = useState(false);
 
@@ -439,24 +598,40 @@ Trả về CHỈ JSON hợp lệ, không markdown, không giải thích:
 
   // ── Manual food ────────────────────────────────────────────────────────────
 
-  function handleAddFood() {
-    if (!manualForm.name.trim()) {
-      setManualError("Vui lòng nhập tên món");
-      return;
-    }
-    setManualFoods((prev) => [
+  function handleConfirmMeal() {
+    const filled = rows.filter((r): r is IngredientRow & { food: FoodItem } => r.food !== null);
+    if (filled.length === 0) return;
+
+    const total = filled.reduce(
+      (acc, row) => {
+        const m = computeRowMacros(row.food, row.grams);
+        return {
+          calories: acc.calories + m.calories,
+          protein: acc.protein + m.protein,
+          fat: acc.fat + m.fat,
+          carbs: acc.carbs + m.carbs,
+        };
+      },
+      { calories: 0, protein: 0, fat: 0, carbs: 0 }
+    );
+
+    const mealName =
+      "Bữa thủ công: " + filled.map(r => `${r.food.name} (${r.grams}g)`).join(" + ");
+
+    setManualFoods(prev => [
       ...prev,
       {
         id: `${Date.now()}-${Math.random()}`,
-        name: manualForm.name.trim(),
-        calories: Math.round(parseFloat(manualForm.calories) || 0),
-        protein: Math.round(parseFloat(manualForm.protein) || 0),
-        fat: Math.round(parseFloat(manualForm.fat) || 0),
-        carbs: Math.round(parseFloat(manualForm.carbs) || 0),
+        name: mealName,
+        calories: Math.round(total.calories),
+        protein: Math.round(total.protein),
+        fat: Math.round(total.fat),
+        carbs: Math.round(total.carbs),
       },
     ]);
-    setManualForm({ name: "", calories: "", protein: "", fat: "", carbs: "" });
-    setManualError(null);
+
+    setRows([newRow()]);
+    setActiveDropdown(null);
   }
 
   // ── PDF export ─────────────────────────────────────────────────────────────
@@ -516,7 +691,7 @@ Trả về CHỈ JSON hợp lệ, không markdown, không giải thích:
     <div id="meal-plan-section" className="mt-6 space-y-4">
       {/* ── Tab container ── */}
       <div
-        className="bg-white rounded-2xl shadow-sm overflow-hidden"
+        className="bg-white rounded-2xl shadow-sm"
         style={{ border: "1px solid rgba(18,16,13,0.1)" }}
       >
         {/* Tab bar */}
@@ -613,7 +788,7 @@ Trả về CHỈ JSON hợp lệ, không markdown, không giải thích:
                     className="text-xs font-semibold uppercase tracking-widest"
                     style={{ color: "rgba(18,16,13,0.35)" }}
                   >
-                    Thực đơn AI gợi ý
+                    Thực đơn gợi ý
                   </p>
                   {aiMeals.map((meal, i) => (
                     <AiMealCard key={i} meal={meal} />
@@ -636,9 +811,9 @@ Trả về CHỈ JSON hợp lệ, không markdown, không giải thích:
                         <div className="grid grid-cols-4 gap-2">
                           {[
                             { label: "Calo", value: gt.cal, unit: "kcal", color: "#eb0915" },
-                            { label: "Protein", value: gt.p, unit: "g", color: "#1d4ed8" },
-                            { label: "Fat", value: gt.f, unit: "g", color: "#b45309" },
-                            { label: "Carbs", value: gt.c, unit: "g", color: "#065f46" },
+                            { label: "Protein", value: Math.round(gt.p), unit: "g", color: "#1d4ed8" },
+                            { label: "Fat", value: Math.round(gt.f), unit: "g", color: "#b45309" },
+                            { label: "Carbs", value: Math.round(gt.c), unit: "g", color: "#065f46" },
                           ].map((item) => (
                             <div
                               key={item.label}
@@ -679,60 +854,133 @@ Trả về CHỈ JSON hợp lệ, không markdown, không giải thích:
                   color="#eb0915"
                 />
                 <TrackingBar
-                  label={`Protein · ${totals.protein} / ${result.protein}g`}
+                  label={`Protein · ${Math.round(totals.protein)} / ${result.protein}g`}
                   current={totals.protein}
                   target={result.protein}
                   color="#1d4ed8"
                 />
                 <TrackingBar
-                  label={`Fat · ${totals.fat} / ${result.fat}g`}
+                  label={`Fat · ${Math.round(totals.fat)} / ${result.fat}g`}
                   current={totals.fat}
                   target={result.fat}
                   color="#b45309"
                 />
                 <TrackingBar
-                  label={`Carbs · ${totals.carbs} / ${result.carbs}g`}
+                  label={`Carbs · ${Math.round(totals.carbs)} / ${result.carbs}g`}
                   current={totals.carbs}
                   target={result.carbs}
                   color="#065f46"
                 />
               </div>
 
-              {/* Add food form */}
-              <div>
-                <p className="dp-label">Thêm món ăn</p>
-                <div className="space-y-2 mt-1">
-                  <input
-                    type="text"
-                    placeholder="Tên món ăn (bắt buộc)"
-                    value={manualForm.name}
-                    onChange={(e) => setManualForm((p) => ({ ...p, name: e.target.value }))}
-                    onKeyDown={(e) => e.key === "Enter" && handleAddFood()}
-                    className="dp-input"
-                  />
-                  <div className="grid grid-cols-4 gap-2">
-                    {(["calories", "protein", "fat", "carbs"] as const).map((field) => (
-                      <input
-                        key={field}
-                        type="number"
-                        placeholder={{ calories: "Calo", protein: "P (g)", fat: "F (g)", carbs: "C (g)" }[field]}
-                        value={manualForm[field]}
-                        onChange={(e) => setManualForm((p) => ({ ...p, [field]: e.target.value }))}
-                        onKeyDown={(e) => e.key === "Enter" && handleAddFood()}
-                        className="dp-input"
-                        min={0}
-                      />
-                    ))}
-                  </div>
+              {/* Meal builder */}
+              <div className="space-y-4">
+                <p className="dp-label">Ghép bữa ăn từ nguyên liệu</p>
+                <div className="space-y-4">
+                  {rows.map((row) => (
+                    <IngredientSearchRow
+                      key={row.id}
+                      row={row}
+                      isActive={activeDropdown === row.id}
+                      canRemove={rows.length > 1}
+                      onQueryChange={(val) => {
+                        setRows(prev =>
+                          prev.map(r => r.id === row.id ? { ...r, query: val, food: null } : r)
+                        );
+                        setActiveDropdown(row.id);
+                      }}
+                      onSelect={(food) => {
+                        setRows(prev =>
+                          prev.map(r => r.id === row.id ? { ...r, food, query: food.name } : r)
+                        );
+                        setActiveDropdown(null);
+                      }}
+                      onGramsChange={(g) =>
+                        setRows(prev =>
+                          prev.map(r => r.id === row.id ? { ...r, grams: g } : r)
+                        )
+                      }
+                      onRemove={() => setRows(prev => prev.filter(r => r.id !== row.id))}
+                      onFocus={() => setActiveDropdown(row.id)}
+                      onBlur={() =>
+                        setTimeout(
+                          () => setActiveDropdown(prev => (prev === row.id ? null : prev)),
+                          150
+                        )
+                      }
+                    />
+                  ))}
                 </div>
-                {manualError && <p className="dp-error-msg mt-1">{manualError}</p>}
+
+                {rows.length < 5 && (
+                  <button
+                    type="button"
+                    onClick={() => setRows(prev => [...prev, newRow()])}
+                    className="text-sm font-semibold"
+                    style={{ color: "#eb0915" }}
+                  >
+                    + Thêm nguyên liệu ({rows.length}/5)
+                  </button>
+                )}
+
+                {/* Meal total preview */}
+                {(() => {
+                  const filled = rows.filter(
+                    (r): r is IngredientRow & { food: FoodItem } => r.food !== null
+                  );
+                  if (filled.length === 0) return null;
+                  const total = filled.reduce(
+                    (acc, r) => {
+                      const m = computeRowMacros(r.food, r.grams);
+                      return {
+                        calories: acc.calories + m.calories,
+                        protein: acc.protein + m.protein,
+                        fat: acc.fat + m.fat,
+                        carbs: acc.carbs + m.carbs,
+                      };
+                    },
+                    { calories: 0, protein: 0, fat: 0, carbs: 0 }
+                  );
+                  return (
+                    <div
+                      className="rounded-xl p-3"
+                      style={{ background: "rgba(18,16,13,0.03)", border: "1px solid rgba(18,16,13,0.08)" }}
+                    >
+                      <p
+                        className="text-xs font-semibold uppercase tracking-widest mb-2"
+                        style={{ color: "rgba(18,16,13,0.35)" }}
+                      >
+                        Tổng bữa · {filled.length} nguyên liệu
+                      </p>
+                      <div className="flex gap-4 flex-wrap">
+                        {[
+                          { label: "Calo", value: `${Math.round(total.calories)} kcal`, color: "#eb0915" },
+                          { label: "Protein", value: `${Math.round(total.protein)}g`, color: "#1d4ed8" },
+                          { label: "Fat", value: `${Math.round(total.fat)}g`, color: "#b45309" },
+                          { label: "Carbs", value: `${Math.round(total.carbs)}g`, color: "#065f46" },
+                        ].map(item => (
+                          <div key={item.label}>
+                            <p className="text-xs" style={{ color: "rgba(18,16,13,0.4)" }}>{item.label}</p>
+                            <p className="text-sm font-bold" style={{ color: item.color }}>{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <button
                   type="button"
-                  onClick={handleAddFood}
-                  className="w-full mt-3 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
-                  style={{ background: "#12100d", color: "#ffffff" }}
+                  onClick={handleConfirmMeal}
+                  disabled={rows.every(r => r.food === null)}
+                  className="w-full py-3 rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
+                  style={{
+                    background: rows.some(r => r.food !== null) ? "#12100d" : "rgba(18,16,13,0.3)",
+                    color: "#ffffff",
+                    cursor: rows.some(r => r.food !== null) ? "pointer" : "not-allowed",
+                  }}
                 >
-                  + Thêm món
+                  ✓ Xác nhận gộp bữa
                 </button>
               </div>
 
@@ -753,7 +1001,7 @@ Trả về CHỈ JSON hợp lệ, không markdown, không giải thích:
                           {food.name}
                         </p>
                         <p className="text-xs mt-0.5" style={{ color: "rgba(18,16,13,0.4)" }}>
-                          {food.calories} kcal &nbsp;·&nbsp; P:{food.protein}g F:{food.fat}g C:{food.carbs}g
+                          {Math.round(food.calories)} kcal &nbsp;·&nbsp; P:{Math.round(food.protein)}g F:{Math.round(food.fat)}g C:{Math.round(food.carbs)}g
                         </p>
                       </div>
                       <button
