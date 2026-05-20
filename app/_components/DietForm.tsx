@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import MealPlanSection from "./MealPlanSection";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -469,6 +470,9 @@ export default function DietForm() {
             )}
           </div>
         )}
+
+        {/* ── Meal Plan Section (Bước 3) ── */}
+        {result && <MealPlanSection result={result} />}
 
       </div>
     </div>
