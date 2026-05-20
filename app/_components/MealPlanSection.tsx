@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import type { NutritionResult } from "./DietForm";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -432,10 +432,14 @@ function Spinner({ light = false }: { light?: boolean }) {
 
 export default function MealPlanSection({ result }: { result: NutritionResult }) {
   const pdfRef = useRef<HTMLDivElement>(null);
+  // Synchronous ref-based lock — set BEFORE any setState so no race condition
+  // can allow a second call between the click and React re-rendering disabled
+  const aiInFlight = useRef(false);
 
   const [activeTab, setActiveTab] = useState<Tab>("ai");
   const [mealCount, setMealCount] = useState<MealCount>(3);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiCooldown, setAiCooldown] = useState(0); // seconds remaining after success
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiMeals, setAiMeals] = useState<AiMeal[] | null>(null);
 
@@ -457,8 +461,10 @@ export default function MealPlanSection({ result }: { result: NutritionResult })
 
   // ── AI generation ─────────────────────────────────────────────────────────
 
-  async function handleGenerateAI() {
-    if (aiLoading) return; // guard against race-condition double-click
+  const handleGenerateAI = useCallback(async () => {
+    // Hard lock: ref is synchronous — immune to React batching delays
+    if (aiInFlight.current) return;
+    aiInFlight.current = true;
     setAiLoading(true);
     setAiError(null);
     setAiMeals(null);
@@ -498,8 +504,18 @@ Trả về CHỈ JSON hợp lệ (không markdown, không giải thích):
       setAiError(err instanceof Error ? err.message : "Đã xảy ra lỗi, vui lòng thử lại");
     } finally {
       setAiLoading(false);
+      aiInFlight.current = false;
+
+      // 5-second cooldown to prevent rapid re-clicks after a request
+      setAiCooldown(5);
+      const t = setInterval(() => {
+        setAiCooldown((s) => {
+          if (s <= 1) { clearInterval(t); return 0; }
+          return s - 1;
+        });
+      }, 1000);
     }
-  }
+  }, [result, mealCount]); // only re-create when inputs change
 
   // ── Manual food ────────────────────────────────────────────────────────────
 
@@ -628,24 +644,32 @@ Trả về CHỈ JSON hợp lệ (không markdown, không giải thích):
                 </div>
               </div>
 
-              {/* Generate button */}
-              <button
-                type="button"
-                onClick={handleGenerateAI}
-                disabled={aiLoading}
-                className="w-full py-3.5 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-                style={{
-                  background: aiLoading ? "rgba(235,9,21,0.65)" : "#eb0915",
-                  color: "#ffffff",
-                  cursor: aiLoading ? "not-allowed" : "pointer",
-                }}
-              >
-                {aiLoading ? (
-                  <><Spinner light /> AI đang phân tích...</>
-                ) : (
-                  "✨ Gợi ý bằng AI"
-                )}
-              </button>
+              {/* Generate button — disabled during request AND during cooldown */}
+              {(() => {
+                const blocked = aiLoading || aiCooldown > 0;
+                return (
+                  <button
+                    type="button"
+                    onClick={handleGenerateAI}
+                    disabled={blocked}
+                    className="w-full py-3.5 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                    style={{
+                      background: blocked ? "rgba(235,9,21,0.55)" : "#eb0915",
+                      color: "#ffffff",
+                      cursor: blocked ? "not-allowed" : "pointer",
+                      pointerEvents: blocked ? "none" : "auto",
+                    }}
+                  >
+                    {aiLoading ? (
+                      <><Spinner light /> AI đang phân tích...</>
+                    ) : aiCooldown > 0 ? (
+                      `Chờ ${aiCooldown}s...`
+                    ) : (
+                      "✨ Gợi ý bằng AI"
+                    )}
+                  </button>
+                );
+              })()}
 
               {/* Error */}
               {aiError && (
