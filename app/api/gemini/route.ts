@@ -10,6 +10,11 @@ const API_KEYS: string[] = process.env.GEMINI_API_KEYS
 const GEMINI_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
+// HTTP status codes that are transient — skip to next key instead of failing hard
+function isRetryableStatus(status: number): boolean {
+  return [400, 429, 500, 503].includes(status);
+}
+
 async function callGemini(prompt: string): Promise<string> {
   if (API_KEYS.length === 0) {
     throw new Error(
@@ -17,27 +22,37 @@ async function callGemini(prompt: string): Promise<string> {
     );
   }
 
+  let lastStatus = 0;
+
   for (let i = 0; i < API_KEYS.length; i++) {
     const key = API_KEYS[i];
 
-    const response = await fetch(`${GEMINI_URL}?key=${key}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${GEMINI_URL}?key=${key}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
+        }),
+      });
+    } catch (networkErr) {
+      // Network-level failure (DNS, timeout, etc.) — skip to next key
+      console.log(`[Gemini] Key #${i + 1} lỗi mạng, thử key tiếp theo:`, networkErr);
+      continue;
+    }
 
-    // Rate-limited or quota exceeded → try next key
-    if (response.status === 429 || response.status === 400) {
+    if (isRetryableStatus(response.status)) {
       console.log(
-        `[Gemini] Key #${i + 1} bị giới hạn (HTTP ${response.status}), thử key tiếp theo`
+        `[Gemini] Key #${i + 1} trả về HTTP ${response.status}, thử key tiếp theo`
       );
+      lastStatus = response.status;
       continue;
     }
 
     if (!response.ok) {
+      // Non-retryable error (401 invalid key, 403 permission, etc.) — fail immediately
       const body = await response.text();
       throw new Error(`Gemini API lỗi HTTP ${response.status}: ${body}`);
     }
@@ -55,7 +70,7 @@ async function callGemini(prompt: string): Promise<string> {
   }
 
   throw new Error(
-    `Tất cả ${API_KEYS.length} key đã hết hạn mức (HTTP 429). Vui lòng thêm key mới vào GEMINI_API_KEYS.`
+    `Tất cả ${API_KEYS.length} key đều không khả dụng (lỗi cuối: HTTP ${lastStatus}). Vui lòng thêm key mới hoặc thử lại sau.`
   );
 }
 
