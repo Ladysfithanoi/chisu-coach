@@ -401,6 +401,33 @@ function PdfTemplate({
   );
 }
 
+// ─── Spinner (defined outside component to avoid recreation on every render) ──
+
+function Spinner({ light = false }: { light?: boolean }) {
+  return (
+    <svg
+      className="animate-spin"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle
+        cx="12" cy="12" r="10"
+        stroke={light ? "rgba(255,255,255,0.3)" : "rgba(18,16,13,0.15)"}
+        strokeWidth="3"
+      />
+      <path
+        d="M12 2a10 10 0 0 1 10 10"
+        stroke={light ? "white" : "#12100d"}
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 export default function MealPlanSection({ result }: { result: NutritionResult }) {
@@ -431,6 +458,7 @@ export default function MealPlanSection({ result }: { result: NutritionResult })
   // ── AI generation ─────────────────────────────────────────────────────────
 
   async function handleGenerateAI() {
+    if (aiLoading) return; // guard against race-condition double-click
     setAiLoading(true);
     setAiError(null);
     setAiMeals(null);
@@ -547,31 +575,6 @@ Trả về CHỈ JSON hợp lệ (không markdown, không giải thích):
 
   const hasMealData = (aiMeals && aiMeals.length > 0) || manualFoods.length > 0;
   const today = new Date().toLocaleDateString("vi-VN");
-
-  // ── Spinner SVG ───────────────────────────────────────────────────────────
-
-  const Spinner = ({ light = false }: { light?: boolean }) => (
-    <svg
-      className="animate-spin"
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <circle
-        cx="12" cy="12" r="10"
-        stroke={light ? "rgba(255,255,255,0.3)" : "rgba(18,16,13,0.15)"}
-        strokeWidth="3"
-      />
-      <path
-        d="M12 2a10 10 0 0 1 10 10"
-        stroke={light ? "white" : "#12100d"}
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
 
   return (
     <div id="meal-plan-section" className="mt-6 space-y-4">
