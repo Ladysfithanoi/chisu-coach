@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Always read env vars fresh — never use build-time cached values
+export const dynamic = "force-dynamic";
+
 // Comma-separated keys: GEMINI_API_KEYS=key1,key2,key3
 const API_KEYS: string[] = process.env.GEMINI_API_KEYS
   ? process.env.GEMINI_API_KEYS.split(",")

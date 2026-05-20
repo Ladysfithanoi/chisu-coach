@@ -5,23 +5,15 @@ import type { NutritionResult } from "./DietForm";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface AiFood {
-  name: string;
-  quantity: string;
+// Flat structure — one object per meal, foods listed as a single string.
+// Simpler JSON = fewer tokens = faster + less likely to hit rate limits.
+interface AiMeal {
+  mealName: string;  // e.g. "Bữa 1 - Sáng (7:00)"
+  name: string;      // e.g. "Cơm lứt 200g + Cá lóc hấp 150g + Rau cải luộc 100g"
   calories: number;
   protein: number;
   fat: number;
   carbs: number;
-}
-
-interface AiMeal {
-  meal: string;
-  time: string;
-  foods: AiFood[];
-  total_calories: number;
-  total_protein: number;
-  total_fat: number;
-  total_carbs: number;
 }
 
 interface ManualFood {
@@ -46,27 +38,14 @@ function parseAiResponse(raw: string): AiMeal[] {
   const cleaned = stripMarkdown(raw);
   const parsed: unknown = JSON.parse(cleaned);
   if (!Array.isArray(parsed)) throw new Error("AI trả về dữ liệu không đúng định dạng mảng");
-  return (parsed as Record<string, unknown>[]).map((item, i) => {
-    const foods: AiFood[] = Array.isArray(item.foods)
-      ? (item.foods as Record<string, unknown>[]).map((f) => ({
-          name: String(f.name ?? ""),
-          quantity: String(f.quantity ?? ""),
-          calories: Number(f.calories ?? 0),
-          protein: Number(f.protein ?? 0),
-          fat: Number(f.fat ?? 0),
-          carbs: Number(f.carbs ?? 0),
-        }))
-      : [];
-    return {
-      meal: String(item.meal ?? `Bữa ${i + 1}`),
-      time: String(item.time ?? ""),
-      foods,
-      total_calories: Number(item.total_calories ?? foods.reduce((s, f) => s + f.calories, 0)),
-      total_protein: Number(item.total_protein ?? foods.reduce((s, f) => s + f.protein, 0)),
-      total_fat: Number(item.total_fat ?? foods.reduce((s, f) => s + f.fat, 0)),
-      total_carbs: Number(item.total_carbs ?? foods.reduce((s, f) => s + f.carbs, 0)),
-    };
-  });
+  return (parsed as Record<string, unknown>[]).map((item, i) => ({
+    mealName: String(item.mealName ?? `Bữa ${i + 1}`),
+    name: String(item.name ?? ""),
+    calories: Number(item.calories ?? 0),
+    protein: Number(item.protein ?? 0),
+    fat: Number(item.fat ?? 0),
+    carbs: Number(item.carbs ?? 0),
+  }));
 }
 
 // ─── TrackingBar ──────────────────────────────────────────────────────────────
@@ -107,46 +86,23 @@ function AiMealCard({ meal }: { meal: AiMeal }) {
   return (
     <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(18,16,13,0.1)" }}>
       <div
-        className="px-4 py-2.5 flex items-center justify-between"
+        className="px-4 py-2 flex items-center justify-between"
         style={{ background: "rgba(235,9,21,0.05)" }}
       >
-        <span style={{ fontSize: "0.875rem", fontWeight: 700, color: "#eb0915" }}>{meal.meal}</span>
-        {meal.time && (
-          <span style={{ fontSize: "0.75rem", color: "rgba(18,16,13,0.4)" }}>{meal.time}</span>
-        )}
-      </div>
-      <div>
-        {meal.foods.map((food, i) => (
-          <div
-            key={i}
-            className="px-4 py-2.5 flex items-start justify-between gap-3"
-            style={{ borderTop: i > 0 ? "1px solid rgba(18,16,13,0.05)" : undefined }}
-          >
-            <div>
-              <p style={{ fontSize: "0.875rem", fontWeight: 500, color: "#12100d" }}>{food.name}</p>
-              <p style={{ fontSize: "0.75rem", color: "rgba(18,16,13,0.38)", marginTop: "1px" }}>
-                {food.quantity}
-              </p>
-            </div>
-            <div className="flex-shrink-0 text-right">
-              <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "#12100d" }}>
-                {food.calories} kcal
-              </p>
-              <p style={{ fontSize: "0.7rem", color: "rgba(18,16,13,0.38)" }}>
-                P:{food.protein} F:{food.fat} C:{food.carbs}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div
-        className="px-4 py-2 flex items-center justify-between"
-        style={{ borderTop: "1px solid rgba(18,16,13,0.07)", background: "rgba(18,16,13,0.025)" }}
-      >
-        <span style={{ fontSize: "0.75rem", color: "rgba(18,16,13,0.38)" }}>Tổng bữa</span>
-        <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#12100d" }}>
-          {meal.total_calories} kcal &nbsp;·&nbsp; P:{meal.total_protein}g F:{meal.total_fat}g C:{meal.total_carbs}g
+        <span style={{ fontSize: "0.875rem", fontWeight: 700, color: "#eb0915" }}>{meal.mealName}</span>
+        <span style={{ fontSize: "0.875rem", fontWeight: 700, color: "#12100d" }}>
+          {meal.calories} kcal
         </span>
+      </div>
+      <div className="px-4 py-3 flex items-start justify-between gap-3">
+        <p style={{ fontSize: "0.875rem", color: "#12100d", lineHeight: 1.55, flex: 1 }}>
+          {meal.name}
+        </p>
+        <p className="flex-shrink-0 text-right" style={{ fontSize: "0.75rem", color: "rgba(18,16,13,0.45)", lineHeight: 1.8 }}>
+          P: {meal.protein}g<br />
+          F: {meal.fat}g<br />
+          C: {meal.carbs}g
+        </p>
       </div>
     </div>
   );
@@ -192,10 +148,10 @@ function PdfTemplate({
   const aiGrand = aiMeals
     ? aiMeals.reduce(
         (a, m) => ({
-          cal: a.cal + m.total_calories,
-          p: a.p + m.total_protein,
-          f: a.f + m.total_fat,
-          c: a.c + m.total_carbs,
+          cal: a.cal + m.calories,
+          p: a.p + m.protein,
+          f: a.f + m.fat,
+          c: a.c + m.carbs,
         }),
         { cal: 0, p: 0, f: 0, c: 0 }
       )
@@ -270,77 +226,45 @@ function PdfTemplate({
         </table>
       </div>
 
-      {/* ── AI Meal tables ── */}
+      {/* ── AI Meal table (flat — one row per meal) ── */}
       {aiMeals && aiMeals.length > 0 && (
         <div style={{ padding: "0 40px 24px" }}>
-          <div style={{ fontSize: "10px", fontWeight: 700, color: "rgba(18,16,13,0.38)", textTransform: "uppercase", letterSpacing: "0.09em", marginBottom: "12px" }}>
+          <div style={{ fontSize: "10px", fontWeight: 700, color: "rgba(18,16,13,0.38)", textTransform: "uppercase", letterSpacing: "0.09em", marginBottom: "10px" }}>
             Kế hoạch thực đơn AI
           </div>
-          {aiMeals.map((meal, mi) => (
-            <div key={mi} style={{ marginBottom: "18px" }}>
-              <div style={{
-                fontSize: "12px", fontWeight: 700, color: "#eb0915",
-                background: "rgba(235,9,21,0.05)", padding: "8px 13px",
-                borderLeft: "3px solid #eb0915",
-              }}>
-                {meal.meal}{meal.time ? `  ·  ${meal.time}` : ""}
-              </div>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr>
-                    <th style={thDark}>Món ăn</th>
-                    <th style={{ ...thDark, textAlign: "center" }}>Định lượng</th>
-                    <th style={{ ...thDark, textAlign: "right" }}>Calo</th>
-                    <th style={{ ...thDark, textAlign: "right" }}>P(g)</th>
-                    <th style={{ ...thDark, textAlign: "right" }}>F(g)</th>
-                    <th style={{ ...thDark, textAlign: "right" }}>C(g)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {meal.foods.map((food, fi) => (
-                    <tr key={fi} style={{ background: fi % 2 === 0 ? "#fff" : "rgba(18,16,13,0.018)" }}>
-                      <td style={td}>{food.name}</td>
-                      <td style={{ ...td, textAlign: "center", color: "rgba(18,16,13,0.48)" }}>{food.quantity}</td>
-                      <td style={{ ...tdRight, fontWeight: 600 }}>{food.calories}</td>
-                      <td style={{ ...tdRight }}>{food.protein}</td>
-                      <td style={{ ...tdRight }}>{food.fat}</td>
-                      <td style={{ ...tdRight }}>{food.carbs}</td>
-                    </tr>
-                  ))}
-                  <tr style={{ background: "rgba(235,9,21,0.04)" }}>
-                    <td style={{ ...tdBold, color: "#eb0915" }} colSpan={2}>Tổng bữa</td>
-                    <td style={{ ...tdRight, fontWeight: 700, color: "#eb0915" }}>{meal.total_calories}</td>
-                    <td style={{ ...tdRight, fontWeight: 700, color: "#eb0915" }}>{meal.total_protein}</td>
-                    <td style={{ ...tdRight, fontWeight: 700, color: "#eb0915" }}>{meal.total_fat}</td>
-                    <td style={{ ...tdRight, fontWeight: 700, color: "#eb0915" }}>{meal.total_carbs}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          ))}
-
-          {/* AI grand total boxes */}
-          {aiGrand && (
-            <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
-              {[
-                { label: "Tổng Calo", value: `${aiGrand.cal} kcal`, color: "#eb0915" },
-                { label: "Protein", value: `${aiGrand.p}g`, color: "#1d4ed8" },
-                { label: "Fat", value: `${aiGrand.f}g`, color: "#b45309" },
-                { label: "Carbs", value: `${aiGrand.c}g`, color: "#065f46" },
-              ].map((item) => (
-                <div key={item.label} style={{
-                  flex: 1, padding: "10px 12px", borderRadius: "8px",
-                  background: "rgba(18,16,13,0.03)", textAlign: "center",
-                  border: "1px solid rgba(18,16,13,0.07)",
-                }}>
-                  <div style={{ fontSize: "9px", color: "rgba(18,16,13,0.38)", marginBottom: "3px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                    {item.label}
-                  </div>
-                  <div style={{ fontSize: "17px", fontWeight: 800, color: item.color }}>{item.value}</div>
-                </div>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={{ ...th, whiteSpace: "nowrap" }}>Bữa ăn</th>
+                <th style={thDark}>Thực đơn chi tiết</th>
+                <th style={{ ...thDark, textAlign: "right" }}>Calo</th>
+                <th style={{ ...thDark, textAlign: "right" }}>P(g)</th>
+                <th style={{ ...thDark, textAlign: "right" }}>F(g)</th>
+                <th style={{ ...thDark, textAlign: "right" }}>C(g)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {aiMeals.map((meal, i) => (
+                <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "rgba(18,16,13,0.018)" }}>
+                  <td style={{ ...tdBold, color: "#eb0915", whiteSpace: "nowrap" }}>{meal.mealName}</td>
+                  <td style={td}>{meal.name}</td>
+                  <td style={{ ...tdRight, fontWeight: 600 }}>{meal.calories}</td>
+                  <td style={tdRight}>{meal.protein}</td>
+                  <td style={tdRight}>{meal.fat}</td>
+                  <td style={tdRight}>{meal.carbs}</td>
+                </tr>
               ))}
-            </div>
-          )}
+              {aiGrand && (
+                <tr style={{ background: "rgba(235,9,21,0.05)" }}>
+                  <td style={{ ...tdBold, color: "#eb0915" }} colSpan={2}>Tổng cả ngày</td>
+                  <td style={{ ...tdRight, fontWeight: 700, color: "#eb0915" }}>{aiGrand.cal}</td>
+                  <td style={{ ...tdRight, fontWeight: 700, color: "#eb0915" }}>{aiGrand.p}</td>
+                  <td style={{ ...tdRight, fontWeight: 700, color: "#eb0915" }}>{aiGrand.f}</td>
+                  <td style={{ ...tdRight, fontWeight: 700, color: "#eb0915" }}>{aiGrand.c}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -470,25 +394,20 @@ export default function MealPlanSection({ result }: { result: NutritionResult })
     setAiError(null);
     setAiMeals(null);
 
-    const prompt = `Bạn là chuyên gia dinh dưỡng cao cấp của Diet Plan.
-Thiết kế thực đơn ${mealCount} bữa ăn trong ngày cho khách hàng sau:
+    const prompt = `Bạn là chuyên gia dinh dưỡng của Diet Plan. Thiết kế thực đơn ${mealCount} bữa cho khách hàng sau (1 lần gọi duy nhất, trả về toàn bộ ngày):
 
-THÔNG TIN KHÁCH HÀNG:
-- DER (Calo mục tiêu): ${result.der} kcal/ngày
-- Protein: ${result.protein}g | Fat: ${result.fat}g | Carbs: ${result.carbs}g
-- Món THÍCH: ${result.likes || "Không có yêu cầu đặc biệt"}
-- Món GHÉT: ${result.dislikes || "Không có yêu cầu đặc biệt"}
+Mục tiêu: ${result.der} kcal | P:${result.protein}g F:${result.fat}g C:${result.carbs}g
+Thích: ${result.likes || "không có"} | Ghét: ${result.dislikes || "không có"}
 
-QUY TẮC BẮT BUỘC (vi phạm = thất bại toàn bộ):
-1. ƯU TIÊN dùng món khách THÍCH. TUYỆT ĐỐI KHÔNG đưa vào bất kỳ món khách GHÉT.
-2. Nếu khách ghét cơm trắng: thay bằng cơm lứt, khoai lang hoặc bún gạo lứt.
-3. DANH SÁCH CẤM tuyệt đối (không được xuất hiện): ức gà, lòng trắng trứng, nước ép trái cây, sữa hạt.
-4. Ghi rõ định lượng từng món (ví dụ: 150g cá lóc hấp, 200g cơm lứt, 1 quả trứng nguyên).
-5. Tổng calo tất cả bữa xấp xỉ ${result.der} kcal (±50 kcal chấp nhận được).
-6. Phân bổ macro đạt: ~${result.protein}g protein, ~${result.fat}g fat, ~${result.carbs}g carbs.
+Quy tắc bắt buộc:
+- Ưu tiên món khách THÍCH. Tuyệt đối không dùng món khách GHÉT.
+- Nếu ghét cơm trắng: thay bằng cơm lứt, khoai lang hoặc bún gạo lứt.
+- Cấm tuyệt đối: ức gà, lòng trắng trứng, nước ép, sữa hạt.
+- Ghi định lượng rõ ràng trong trường "name" (vd: "Cơm lứt 200g + Cá lóc hấp 150g + Rau cải 100g").
+- Tổng calo ≈ ${result.der} kcal (±50 kcal).
 
-Trả về CHỈ JSON hợp lệ (không markdown, không giải thích):
-[{"meal":"Bữa 1 - Sáng","time":"7:00","foods":[{"name":"Tên món","quantity":"150g","calories":200,"protein":15,"fat":5,"carbs":20}],"total_calories":200,"total_protein":15,"total_fat":5,"total_carbs":20}]`;
+Trả về CHỈ JSON hợp lệ, không markdown, không giải thích:
+[{"mealName":"Bữa 1 - Sáng (7:00)","name":"Tên món 1 150g + Tên món 2 200g","calories":500,"protein":35,"fat":15,"carbs":55}]`;
 
     try {
       const res = await fetch("/api/gemini", {
@@ -703,7 +622,7 @@ Trả về CHỈ JSON hợp lệ (không markdown, không giải thích):
                   {/* Daily grand total */}
                   {(() => {
                     const gt = aiMeals.reduce(
-                      (a, m) => ({ cal: a.cal + m.total_calories, p: a.p + m.total_protein, f: a.f + m.total_fat, c: a.c + m.total_carbs }),
+                      (a, m) => ({ cal: a.cal + m.calories, p: a.p + m.protein, f: a.f + m.fat, c: a.c + m.carbs }),
                       { cal: 0, p: 0, f: 0, c: 0 }
                     );
                     return (
