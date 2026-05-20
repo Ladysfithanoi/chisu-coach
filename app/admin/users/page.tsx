@@ -28,7 +28,7 @@ export default async function AdminUsersPage() {
     orderBy: { createdAt: "asc" },
   });
 
-  const serialized = users.map((u) => ({
+  const serialized = users.map((u: any) => ({
     ...u,
     createdAt: u.createdAt.toISOString(),
   }));
