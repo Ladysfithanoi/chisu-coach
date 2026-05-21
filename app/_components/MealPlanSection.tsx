@@ -808,7 +808,7 @@ Trả về CHỈ JSON hợp lệ, không markdown, không giải thích:
                         <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(18,16,13,0.35)" }}>
                           Tổng cả ngày
                         </p>
-                        <div className="grid grid-cols-4 gap-2">
+                        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
                           {[
                             { label: "Calo", value: gt.cal, unit: "kcal", color: "#eb0915" },
                             { label: "Protein", value: Math.round(gt.p), unit: "g", color: "#1d4ed8" },
@@ -821,9 +821,9 @@ Trả về CHỈ JSON hợp lệ, không markdown, không giải thích:
                               style={{ background: "#ffffff", border: "1px solid rgba(18,16,13,0.07)" }}
                             >
                               <p className="text-xs" style={{ color: "rgba(18,16,13,0.4)" }}>{item.label}</p>
-                              <p className="text-lg font-bold mt-0.5" style={{ color: item.color }}>
+                              <p className="text-lg md:text-xl font-bold mt-0.5" style={{ color: item.color }}>
                                 {item.value}
-                                <span className="text-xs font-semibold ml-0.5">{item.unit}</span>
+                                <span className="text-xs md:text-sm font-semibold ml-0.5">{item.unit}</span>
                               </p>
                             </div>
                           ))}
