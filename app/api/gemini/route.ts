@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { FOODS } from "@/lib/foods-data";
 
 // Always read env vars fresh — never use build-time cached values
 export const dynamic = "force-dynamic";
@@ -11,7 +12,22 @@ const API_KEYS: string[] = process.env.GEMINI_API_KEYS
   : [];
 
 const GEMINI_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent";
+
+// Build system instruction once at module load — not per request
+const FOODS_JSON = JSON.stringify(FOODS);
+
+const SYSTEM_INSTRUCTION = `Cậu là một thuật toán toán học xếp hình thực đơn siêu tốc dành cho người Việt. Nhiệm vụ của cậu là dựa trên dữ liệu Khách hàng nhập vào (Mục tiêu Calo tổng, Tỷ lệ Macro P-C-F, Số lượng bữa ăn) để LỰA CHỌN các món ăn phù hợp TỪ MẢNG DỮ LIỆU THỰC PHẨM ĐƯỢC CUNG CẤP DƯỚI ĐÂY.
+
+MẢNG DỮ LIỆU THỰC PHẨM (nguồn: foods-data.ts — toàn bộ 526 món chuẩn Việt Nam):
+${FOODS_JSON}
+
+QUY TẮC BẮT BUỘC:
+- QUY TẮC 1 (KHÓA DATA GỐC): KHÔNG ĐƯỢC TỰ CHẾ hay sáng tác bất kỳ món ăn mới nào nằm ngoài mảng dữ liệu trên. Chỉ được dùng đúng tên món có trong data, tính toán định lượng (gram) và nhân hệ số macro theo công thức: giá_trị_100g × (gram / 100).
+- QUY TẮC 2 (ƯU TIÊN BỮA SÁNG VIỆT NAM): Nếu khách chọn TỪ 3 BỮA TRỞ LÊN, tại Bữa 1 (Bữa sáng) bắt buộc ưu tiên cao nhất các món ăn nhanh phổ biến có trong data như: Bún, Phở, Xôi, Bánh mì, Bánh bao. Tuyệt đối hạn chế cơm nấu phức tạp ở bữa sáng.
+- QUY TẮC 3 (TÍNH TOÁN SAI SỐ): Chạy thuật toán so khớp nhanh nhất để tổng Calo và Macro của các món được chọn cộng lại tiệm cận gần nhất với mục tiêu của khách. Sai số calo cho phép: ±50 kcal.
+- QUY TẮC 4 (ĐẦU RA CẤU TRÚC): Trả về KẾT QUẢ CHỈ dạng JSON hoàn toàn theo schema sau, tuyệt đối không giải thích văn bản dài dòng:
+[{"mealName":"Bữa 1 - Sáng (7:00)","name":"Tên món 150g + Tên món 2 200g","calories":500,"protein":35,"fat":15,"carbs":55}]`;
 
 // HTTP status codes that are transient — skip to next key instead of failing hard
 function isRetryableStatus(status: number): boolean {
@@ -36,12 +52,18 @@ async function callGemini(prompt: string): Promise<string> {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: SYSTEM_INSTRUCTION }],
+          },
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.3,
+            maxOutputTokens: 4096,
+          },
         }),
       });
     } catch (networkErr) {
-      // Network-level failure (DNS, timeout, etc.) — skip to next key
       console.log(`[Gemini] Key #${i + 1} lỗi mạng, thử key tiếp theo:`, networkErr);
       continue;
     }
@@ -55,7 +77,6 @@ async function callGemini(prompt: string): Promise<string> {
     }
 
     if (!response.ok) {
-      // Non-retryable error (401 invalid key, 403 permission, etc.) — fail immediately
       const body = await response.text();
       throw new Error(`Gemini API lỗi HTTP ${response.status}: ${body}`);
     }
@@ -69,7 +90,7 @@ async function callGemini(prompt: string): Promise<string> {
       throw new Error("Gemini không trả về nội dung hợp lệ");
     }
 
-    return text; // success — stop here
+    return text;
   }
 
   throw new Error(
