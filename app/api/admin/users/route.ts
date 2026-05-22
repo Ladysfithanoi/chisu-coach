@@ -1,25 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { verifySession, COOKIE_NAME } from "@/lib/jwt";
+import { getAdminAuth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
-async function requireAdmin() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
-  if (!token) return null;
-  try {
-    const session = await verifySession(token);
-    if (session.role !== "ADMIN") return null;
-    return session;
-  } catch {
-    return null;
-  }
-}
-
 export async function GET(_req: NextRequest) {
-  const session = await requireAdmin();
-  if (!session) {
-    return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 403 });
+  const auth = await getAdminAuth();
+  if (!auth.ok) {
+    return NextResponse.json({ error: "Không có quyền truy cập" }, { status: auth.kicked ? 401 : 403 });
   }
 
   const users = await prisma.user.findMany({

@@ -574,6 +574,13 @@ Trả về CHỈ JSON hợp lệ, không markdown, không giải thích:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
       });
+
+      if (res.status === 401) {
+        const errData = await res.json() as { kicked?: boolean };
+        window.location.replace(errData.kicked ? "/login?kicked=1" : "/login");
+        return;
+      }
+
       const data: { result?: string; error?: string } = await res.json();
       if (!res.ok || data.error) throw new Error(data.error ?? "Lỗi từ Gemini API");
       if (!data.result) throw new Error("Gemini không trả về nội dung");

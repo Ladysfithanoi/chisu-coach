@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { FOODS } from "@/lib/foods-data";
+import { getAuth } from "@/lib/auth";
 
 // Always read env vars fresh — never use build-time cached values
 export const dynamic = "force-dynamic";
@@ -113,6 +114,19 @@ async function callGemini(prompt: string): Promise<string> {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await getAuth();
+  if (!auth.ok) {
+    return NextResponse.json(
+      {
+        error: auth.kicked
+          ? "Tài khoản của bạn đang được đăng nhập ở một thiết bị khác!"
+          : "Chưa đăng nhập",
+        kicked: auth.kicked,
+      },
+      { status: 401 }
+    );
+  }
+
   try {
     const body = await req.json() as { prompt?: string };
     const { prompt } = body;

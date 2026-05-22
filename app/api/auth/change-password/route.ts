@@ -43,6 +43,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Tài khoản không tồn tại" }, { status: 404 });
     }
 
+    if (user.currentSessionToken !== session.sid) {
+      return NextResponse.json(
+        { error: "Tài khoản của bạn đang được đăng nhập ở một thiết bị khác!", kicked: true },
+        { status: 401 }
+      );
+    }
+
     const match = await bcrypt.compare(currentPassword, user.password);
     if (!match) {
       return NextResponse.json({ error: "Mật khẩu hiện tại không đúng" }, { status: 400 });
