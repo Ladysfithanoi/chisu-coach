@@ -1,45 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
+import { verifySession, COOKIE_NAME } from "@/lib/jwt";
 
-const COOKIE_NAME = "dp-session";
+// Edge-compatible guard: JWT verification only (no DB — Prisma/pg doesn't run on edge).
+// The DB session-match check (kicked detection) is enforced inside each API route and
+// server component via lib/auth.ts.
 
-const PUBLIC_PREFIXES = ["/login", "/api/auth"];
-
-function isPublic(pathname: string): boolean {
-  return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
-}
-
-function getSecret(): Uint8Array {
-  return new TextEncoder().encode(
-    process.env.JWT_SECRET ?? "diet-plan-fallback-secret-change-me"
-  );
-}
+const API_PREFIXES = ["/api/gemini", "/api/admin"];
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
-
-  if (isPublic(pathname)) {
-    return NextResponse.next();
-  }
+  const isApi = API_PREFIXES.some((p) => pathname.startsWith(p));
 
   const token = req.cookies.get(COOKIE_NAME)?.value;
 
   if (!token) {
+    if (isApi) {
+      return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+    }
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
   try {
-    await jwtVerify(token, getSecret(), { algorithms: ["HS256"] });
+    await verifySession(token);
     return NextResponse.next();
   } catch {
+    if (isApi) {
+      return NextResponse.json({ error: "Phiên đăng nhập không hợp lệ" }, { status: 401 });
+    }
     const res = NextResponse.redirect(new URL("/login", req.url));
-    res.cookies.set(COOKIE_NAME, "", { maxAge: 0, path: "/" });
+    res.cookies.set(COOKIE_NAME, "", { httpOnly: true, sameSite: "lax", path: "/", maxAge: 0 });
     return res;
   }
 }
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    // Protect main app pages
+    "/",
+    "/admin/:path*",
+    // Protect AI and admin APIs
+    "/api/gemini/:path*",
+    "/api/admin/:path*",
   ],
 };
