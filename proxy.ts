@@ -9,6 +9,16 @@ const API_PREFIXES = ["/api/gemini", "/api/admin"];
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // Bypass: never intercept static assets — fixes missing CSS/JS on Safari/iPad
+  if (
+    pathname.startsWith("/_next/") ||
+    pathname.includes("/static/") ||
+    /\.(js|css|png|jpg|jpeg|svg|ico|woff|woff2|ttf)$/.test(pathname)
+  ) {
+    return NextResponse.next();
+  }
+
   const isApi = API_PREFIXES.some((p) => pathname.startsWith(p));
 
   const token = req.cookies.get(COOKIE_NAME)?.value;
