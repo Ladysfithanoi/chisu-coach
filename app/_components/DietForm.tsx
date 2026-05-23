@@ -10,6 +10,7 @@ type Gender = "male" | "female";
 type BmrFormula = "mifflin" | "harris" | "pyramid";
 type ActivityLevel = "level1" | "level2" | "level3" | "level4";
 type WeightGoal = "lose" | "gain" | "maintain";
+type GoalInputMode = "target_weight" | "kg_to_lose";
 
 interface FormState {
   name: string;
@@ -22,6 +23,8 @@ interface FormState {
   bmrFormula: BmrFormula;
   activityLevel: ActivityLevel;
   weightGoal: WeightGoal;
+  goalInputMode: GoalInputMode;
+  goalInputValue: string;
 }
 
 // Exported so AI-menu route (Bước 3) can import this type
@@ -43,6 +46,10 @@ export interface NutritionResult {
   fat: number;
   carbs: number;
   weeklyLoss: number | null;
+  totalToLose: number | null;
+  weeksToGoal: number | null;
+  daysToGoal: number | null;
+  monthsToGoal: number | null;
 }
 
 type FormErrors = Partial<Record<keyof FormState, string>>;
@@ -109,6 +116,22 @@ function calcMacros(
   return { protein, fat, carbs };
 }
 
+function computeRoadmap(
+  weight: number,
+  goalInputMode: GoalInputMode,
+  goalInputValue: string
+): { totalToLose: number; weeksToGoal: number; daysToGoal: number; monthsToGoal: number } | null {
+  const val = parseFloat(goalInputValue);
+  if (isNaN(val) || val <= 0) return null;
+  const totalToLose = goalInputMode === "target_weight" ? weight - val : val;
+  if (totalToLose <= 0) return null;
+  const weeklyLoss = weight * 0.01;
+  const weeksToGoal = Math.round(totalToLose / weeklyLoss);
+  const daysToGoal = weeksToGoal * 7;
+  const monthsToGoal = Math.round((weeksToGoal / 4) * 10) / 10;
+  return { totalToLose, weeksToGoal, daysToGoal, monthsToGoal };
+}
+
 // ─── Label Maps ───────────────────────────────────────────────────────────────
 
 const GOAL_LABEL: Record<WeightGoal, string> = {
@@ -141,6 +164,8 @@ const INITIAL_FORM: FormState = {
   bmrFormula: "mifflin",
   activityLevel: "level1",
   weightGoal: "lose",
+  goalInputMode: "kg_to_lose",
+  goalInputValue: "",
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -174,6 +199,10 @@ export default function DietForm({ userName }: { userName: string }) {
     setForm((prev) => ({ ...prev, weightGoal: goal }));
   }
 
+  function setGoalMode(mode: GoalInputMode) {
+    setForm((prev) => ({ ...prev, goalInputMode: mode, goalInputValue: "" }));
+  }
+
   function validate(): boolean {
     const next: FormErrors = {};
     if (!form.name.trim()) next.name = "Vui lòng nhập họ và tên";
@@ -199,6 +228,10 @@ export default function DietForm({ userName }: { userName: string }) {
     const tdee = calcTDEE(bmr, form.activityLevel);
     const { der, weeklyLoss } = calcDER(tdee, form.weightGoal, w);
     const { protein, fat, carbs } = calcMacros(h, der);
+    const roadmap = form.weightGoal === "lose"
+      ? computeRoadmap(w, form.goalInputMode, form.goalInputValue)
+      : null;
+
     setResult({
       name: form.name.trim(),
       gender: form.gender,
@@ -217,6 +250,10 @@ export default function DietForm({ userName }: { userName: string }) {
       fat,
       carbs: Math.round(carbs),
       weeklyLoss,
+      totalToLose: roadmap?.totalToLose ?? null,
+      weeksToGoal: roadmap?.weeksToGoal ?? null,
+      daysToGoal: roadmap?.daysToGoal ?? null,
+      monthsToGoal: roadmap?.monthsToGoal ?? null,
     });
     setTimeout(() => {
       document.getElementById("result-card")?.scrollIntoView({ behavior: "smooth" });
@@ -262,6 +299,13 @@ export default function DietForm({ userName }: { userName: string }) {
       setCpSaving(false);
     }
   }
+
+  const liveRoadmap = (() => {
+    if (form.weightGoal !== "lose") return null;
+    const w = parseFloat(form.weight);
+    if (isNaN(w) || w < 30) return null;
+    return computeRoadmap(w, form.goalInputMode, form.goalInputValue);
+  })();
 
   return (
     <>
@@ -565,6 +609,95 @@ export default function DietForm({ userName }: { userName: string }) {
                 </div>
               </div>
 
+              {/* ── Goal roadmap inputs — only when "lose" ── */}
+              {form.weightGoal === "lose" && (
+                <div className="sm:col-span-2 space-y-3">
+                  {/* Mode selector */}
+                  <div>
+                    <p className="dp-label">Nhập mục tiêu theo</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(["kg_to_lose", "target_weight"] as GoalInputMode[]).map((mode) => {
+                        const active = form.goalInputMode === mode;
+                        const label = mode === "kg_to_lose" ? "Số cân muốn giảm" : "Cân nặng mục tiêu";
+                        return (
+                          <button
+                            key={mode}
+                            type="button"
+                            onClick={() => setGoalMode(mode)}
+                            className="py-2.5 rounded-xl text-sm font-semibold transition-all"
+                            style={{
+                              border: active ? "1px solid #eb0915" : "1px solid rgba(18,16,13,0.15)",
+                              background: active ? "rgba(235,9,21,0.08)" : "#ffffff",
+                              color: active ? "#eb0915" : "rgba(18,16,13,0.65)",
+                            }}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Value input */}
+                  <div>
+                    <label htmlFor="goalInputValue" className="dp-label">
+                      {form.goalInputMode === "kg_to_lose"
+                        ? "Số cân muốn giảm (kg)"
+                        : "Cân nặng mục tiêu (kg)"}
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="goalInputValue"
+                        type="number"
+                        name="goalInputValue"
+                        value={form.goalInputValue}
+                        onChange={handleChange}
+                        placeholder={form.goalInputMode === "kg_to_lose" ? "Ví dụ: 5" : "Ví dụ: 60"}
+                        min={form.goalInputMode === "target_weight" ? 30 : 0.5}
+                        step={0.1}
+                        className="dp-input"
+                        style={{ paddingRight: "42px" }}
+                      />
+                      <span
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold pointer-events-none"
+                        style={{ color: "rgba(18,16,13,0.4)" }}
+                      >
+                        kg
+                      </span>
+                    </div>
+
+                    {/* Live roadmap preview */}
+                    {liveRoadmap && (
+                      <div
+                        className="mt-2 rounded-xl px-4 py-3 text-sm"
+                        style={{
+                          background: "rgba(235,9,21,0.04)",
+                          border: "1px solid rgba(235,9,21,0.15)",
+                          color: "#12100d",
+                        }}
+                      >
+                        <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: "#eb0915" }}>
+                          Lộ trình dự kiến
+                        </p>
+                        Cần{" "}
+                        <span className="font-bold" style={{ color: "#eb0915" }}>
+                          {liveRoadmap.daysToGoal} ngày
+                        </span>{" "}
+                        để đạt mục tiêu, tương ứng với khoảng{" "}
+                        <span className="font-bold" style={{ color: "#eb0915" }}>
+                          {liveRoadmap.weeksToGoal} tuần
+                        </span>{" "}
+                        (khoảng{" "}
+                        <span className="font-bold" style={{ color: "#eb0915" }}>
+                          {liveRoadmap.monthsToGoal} tháng
+                        </span>
+                        ).
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
             </div>
           </section>
 
@@ -633,7 +766,33 @@ export default function DietForm({ userName }: { userName: string }) {
                 bg="rgba(16,185,129,0.07)" color="#065f46" />
             </div>
 
-            {result.weeklyLoss !== null && (
+            {result.daysToGoal !== null ? (
+              <div
+                className="rounded-xl px-4 py-3 text-sm"
+                style={{
+                  background: "rgba(235,9,21,0.04)",
+                  border: "1px solid rgba(235,9,21,0.15)",
+                  color: "#12100d",
+                }}
+              >
+                <p className="text-xs font-bold uppercase tracking-widest mb-1.5" style={{ color: "#eb0915" }}>
+                  Lộ trình giảm cân
+                </p>
+                Cần{" "}
+                <span className="font-bold" style={{ color: "#eb0915" }}>
+                  {result.daysToGoal} ngày
+                </span>{" "}
+                để đạt mục tiêu, tương ứng với khoảng{" "}
+                <span className="font-bold" style={{ color: "#eb0915" }}>
+                  {result.weeksToGoal} tuần
+                </span>{" "}
+                (khoảng{" "}
+                <span className="font-bold" style={{ color: "#eb0915" }}>
+                  {result.monthsToGoal} tháng
+                </span>
+                ).
+              </div>
+            ) : result.weeklyLoss !== null ? (
               <div
                 className="rounded-xl px-4 py-3 text-sm"
                 style={{
@@ -649,7 +808,7 @@ export default function DietForm({ userName }: { userName: string }) {
                 </span>{" "}
                 trong 1 tuần.
               </div>
-            )}
+            ) : null}
           </div>
         )}
 
