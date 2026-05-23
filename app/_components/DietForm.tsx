@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import MealPlanSection from "./MealPlanSection";
 
@@ -177,6 +177,23 @@ export default function DietForm({ userName }: { userName: string }) {
   const [errors, setErrors] = useState<FormErrors>({});
   const [loggingOut, setLoggingOut] = useState(false);
 
+  // Macro editor state
+  const [macroP, setMacroP] = useState(0);
+  const [macroF, setMacroF] = useState(0);
+  const [macroC, setMacroC] = useState(0);
+  const [autoBalance, setAutoBalance] = useState(true);
+  const [macroAlert, setMacroAlert] = useState("");
+
+  // Sync macro inputs whenever a new result is calculated
+  useEffect(() => {
+    if (result) {
+      setMacroP(result.protein);
+      setMacroF(result.fat);
+      setMacroC(result.carbs);
+      setMacroAlert("");
+    }
+  }, [result]);
+
   // Change-password modal state
   const [showChangePwd, setShowChangePwd] = useState(false);
   const [cpCurrent, setCpCurrent] = useState("");
@@ -201,6 +218,62 @@ export default function DietForm({ userName }: { userName: string }) {
 
   function setGoalMode(mode: GoalInputMode) {
     setForm((prev) => ({ ...prev, goalInputMode: mode, goalInputValue: "" }));
+  }
+
+  function handleMacroChange(field: "p" | "f" | "c", rawVal: string) {
+    if (!result) return;
+    const parsed = parseInt(rawVal, 10);
+    if (isNaN(parsed) || parsed < 0) return;
+    const val = parsed;
+    setMacroAlert("");
+
+    if (!autoBalance) {
+      if (field === "p") setMacroP(val);
+      else if (field === "f") setMacroF(val);
+      else setMacroC(val);
+      return;
+    }
+
+    const FAT_MIN = 40, CARB_MIN = 30;
+    const der = result.der;
+
+    if (field === "p") {
+      const remaining = der - val * 4;
+      if (remaining < FAT_MIN * 9 + CARB_MIN * 4) {
+        setMacroAlert("Fat (40g) và Carb (30g) đã chạm ngưỡng tối thiểu cho sức khỏe tối ưu, không thể điều chỉnh thêm!");
+        return;
+      }
+      setMacroP(val);
+      const carbCals = remaining - macroF * 9;
+      if (carbCals / 4 >= CARB_MIN) {
+        setMacroC(Math.round(carbCals / 4));
+      } else {
+        setMacroC(CARB_MIN);
+        setMacroF(Math.round((remaining - CARB_MIN * 4) / 9));
+      }
+    } else if (field === "f") {
+      const remaining = der - val * 9;
+      if (remaining < 0) return;
+      setMacroF(val);
+      const carbCals = remaining - macroP * 4;
+      if (carbCals / 4 >= CARB_MIN) {
+        setMacroC(Math.round(carbCals / 4));
+      } else {
+        setMacroC(CARB_MIN);
+        setMacroP(Math.max(0, Math.round((remaining - CARB_MIN * 4) / 4)));
+      }
+    } else {
+      const remaining = der - val * 4;
+      if (remaining < 0) return;
+      setMacroC(val);
+      const fatCals = remaining - macroP * 4;
+      if (fatCals / 9 >= FAT_MIN) {
+        setMacroF(Math.round(fatCals / 9));
+      } else {
+        setMacroF(FAT_MIN);
+        setMacroP(Math.max(0, Math.round((remaining - FAT_MIN * 9) / 4)));
+      }
+    }
   }
 
   function validate(): boolean {
@@ -729,13 +802,72 @@ export default function DietForm({ userName }: { userName: string }) {
                 sub="Calo cần nạp mỗi ngày" highlight />
             </div>
 
-            <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
-              <MacroBox label="Protein" value={result.protein} unit="g"
-                bg="rgba(59,130,246,0.07)" color="#1d4ed8" />
-              <MacroBox label="Fat" value={result.fat} unit="g"
-                bg="rgba(245,158,11,0.07)" color="#b45309" />
-              <MacroBox label="Carbs" value={result.carbs} unit="g"
-                bg="rgba(16,185,129,0.07)" color="#065f46" />
+            {/* ── Macro Editor ── */}
+            <div className="mb-4">
+              {/* Header row: label + toggle */}
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold uppercase tracking-widest"
+                  style={{ color: "rgba(18,16,13,0.35)" }}>
+                  Macro (g)
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setAutoBalance((v) => !v); setMacroAlert(""); }}
+                  className="flex items-center gap-2 focus:outline-none"
+                  aria-label="Tự động chỉnh macro"
+                >
+                  <span className="text-xs font-medium" style={{ color: "rgba(18,16,13,0.5)" }}>
+                    Tự động chỉnh
+                  </span>
+                  <span
+                    className="relative inline-flex items-center w-9 h-5 rounded-full transition-colors duration-200"
+                    style={{ background: autoBalance ? "#eb0915" : "rgba(18,16,13,0.2)" }}
+                  >
+                    <span
+                      className="absolute w-4 h-4 bg-white rounded-full shadow transition-all duration-200"
+                      style={{ left: autoBalance ? "18px" : "2px" }}
+                    />
+                  </span>
+                </button>
+              </div>
+
+              {/* Alert banner */}
+              {macroAlert && (
+                <div
+                  className="mb-2 rounded-xl px-3 py-2 text-xs font-medium flex items-start gap-2"
+                  style={{ background: "rgba(235,9,21,0.06)", border: "1px solid rgba(235,9,21,0.2)", color: "#eb0915" }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 mt-0.5">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                  {macroAlert}
+                </div>
+              )}
+
+              {/* Three macro input boxes */}
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <MacroInput label="Protein" value={macroP} color="#1d4ed8" bg="rgba(59,130,246,0.07)"
+                  onChange={(v) => handleMacroChange("p", v)} />
+                <MacroInput label="Fat" value={macroF} color="#b45309" bg="rgba(245,158,11,0.07)"
+                  onChange={(v) => handleMacroChange("f", v)} />
+                <MacroInput label="Carbs" value={macroC} color="#065f46" bg="rgba(16,185,129,0.07)"
+                  onChange={(v) => handleMacroChange("c", v)} />
+              </div>
+
+              {/* Manual mode: show computed total cals */}
+              {!autoBalance && (
+                <div
+                  className="mt-2 flex items-center justify-between px-3 py-2 rounded-xl"
+                  style={{ background: "rgba(18,16,13,0.03)" }}
+                >
+                  <span className="text-xs font-semibold" style={{ color: "rgba(18,16,13,0.45)" }}>
+                    Tổng Calo thực nhập
+                  </span>
+                  <span className="text-sm font-bold" style={{ color: "#12100d" }}>
+                    {(macroP * 4 + macroF * 9 + macroC * 4).toLocaleString("vi-VN")} kcal
+                  </span>
+                </div>
+              )}
             </div>
 
             {liveRoadmap ? (
@@ -824,17 +956,30 @@ function StatBox({ label, value, sub, highlight = false }: {
   );
 }
 
-function MacroBox({ label, value, unit, bg, color }: {
-  label: string; value: number; unit: string; bg: string; color: string;
+function MacroInput({ label, value, color, bg, onChange }: {
+  label: string; value: number; color: string; bg: string;
+  onChange: (val: string) => void;
 }) {
   return (
     <div className="rounded-xl p-3 text-center" style={{ background: bg }}>
-      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color, opacity: 0.7 }}>
+      <p className="text-xs font-semibold uppercase tracking-wider mb-1.5"
+        style={{ color, opacity: 0.75 }}>
         {label}
       </p>
-      <p className="text-2xl font-bold mt-1" style={{ color }}>
-        {value}<span className="text-sm font-semibold ml-0.5">{unit}</span>
-      </p>
+      <input
+        type="number"
+        value={value}
+        min={0}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full text-center font-bold text-xl leading-none bg-transparent border-0 outline-none p-0 m-0"
+        style={{
+          color,
+          appearance: "none",
+          WebkitAppearance: "none",
+          MozAppearance: "textfield",
+        }}
+      />
+      <p className="text-xs font-semibold mt-1" style={{ color, opacity: 0.6 }}>g</p>
     </div>
   );
 }
