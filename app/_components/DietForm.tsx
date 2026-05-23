@@ -740,21 +740,29 @@ export default function DietForm({ userName }: { userName: string }) {
 
             {liveRoadmap ? (
               <div
-                className="rounded-xl p-4"
-                style={{ background: "#12100d" }}
+                className="rounded-xl p-4 shadow-sm"
+                style={{ background: "#ffffff", border: "1px solid rgba(18,16,13,0.1)" }}
               >
                 <p
-                  className="text-xs font-semibold uppercase tracking-widest mb-3"
-                  style={{ color: "rgba(255,255,255,0.45)" }}
+                  className="text-xs font-bold uppercase tracking-widest mb-2"
+                  style={{ color: "#eb0915" }}
                 >
-                  Thời gian dự kiến
+                  Lộ trình giảm cân
                 </p>
-                <p className="text-3xl font-black leading-none" style={{ color: "#eb0915" }}>
-                  {liveRoadmap.daysToGoal}{" "}
-                  <span className="text-lg font-bold" style={{ color: "rgba(255,255,255,0.7)" }}>ngày</span>
-                </p>
-                <p className="mt-1.5 text-sm font-medium" style={{ color: "rgba(255,255,255,0.5)" }}>
-                  ~{liveRoadmap.weeksToGoal} tuần&nbsp;/&nbsp;{liveRoadmap.monthsToGoal} tháng
+                <p className="text-sm leading-relaxed" style={{ color: "rgba(18,16,13,0.7)" }}>
+                  Cần{" "}
+                  <span className="font-bold" style={{ color: "#eb0915" }}>
+                    {liveRoadmap.daysToGoal} ngày
+                  </span>{" "}
+                  để đạt mục tiêu, tương ứng với khoảng{" "}
+                  <span className="font-bold" style={{ color: "#eb0915" }}>
+                    {liveRoadmap.weeksToGoal} tuần
+                  </span>{" "}
+                  (khoảng{" "}
+                  <span className="font-bold" style={{ color: "#eb0915" }}>
+                    {liveRoadmap.monthsToGoal} tháng
+                  </span>
+                  ).
                 </p>
               </div>
             ) : result.weeklyLoss !== null ? (
