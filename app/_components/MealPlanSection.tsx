@@ -513,7 +513,19 @@ function Spinner({ light = false }: { light?: boolean }) {
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-export default function MealPlanSection({ result }: { result: NutritionResult }) {
+export default function MealPlanSection({
+  result,
+  liveProtein,
+  liveFat,
+  liveCarbs,
+  liveDer,
+}: {
+  result: NutritionResult;
+  liveProtein: number;
+  liveFat: number;
+  liveCarbs: number;
+  liveDer: number;
+}) {
   const pdfRef = useRef<HTMLDivElement>(null);
   // Synchronous ref-based lock — set BEFORE any setState so no race condition
   // can allow a second call between the click and React re-rendering disabled
@@ -555,7 +567,7 @@ export default function MealPlanSection({ result }: { result: NutritionResult })
 
     const prompt = `Bạn là chuyên gia dinh dưỡng của Diet Plan. Thiết kế thực đơn ${mealCount} bữa cho khách hàng sau (1 lần gọi duy nhất, trả về toàn bộ ngày):
 
-Mục tiêu: ${result.der} kcal | P:${result.protein}g F:${result.fat}g C:${result.carbs}g
+Mục tiêu: ${liveDer} kcal | P:${liveProtein}g F:${liveFat}g C:${liveCarbs}g
 Thích: ${result.likes || "không có"} | Ghét: ${result.dislikes || "không có"}
 
 Quy tắc bắt buộc:
@@ -563,7 +575,7 @@ Quy tắc bắt buộc:
 - Nếu ghét cơm trắng: thay bằng cơm lứt, khoai lang hoặc bún gạo lứt.
 - Cấm tuyệt đối: ức gà, lòng trắng trứng, nước ép, sữa hạt.
 - Ghi định lượng rõ ràng trong trường "name" (vd: "Cơm lứt 200g + Cá lóc hấp 150g + Rau cải 100g").
-- Tổng calo ≈ ${result.der} kcal (±50 kcal).
+- Tổng calo ≈ ${liveDer} kcal (±50 kcal).
 
 Trả về CHỈ JSON hợp lệ, không markdown, không giải thích:
 [{"mealName":"Bữa 1 - Sáng (7:00)","name":"Tên món 1 150g + Tên món 2 200g","calories":500,"protein":35,"fat":15,"carbs":55}]`;
@@ -855,27 +867,27 @@ Trả về CHỈ JSON hợp lệ, không markdown, không giải thích:
                   Tracking Board
                 </p>
                 <TrackingBar
-                  label={`Calo · ${totals.calories} / ${result.der} kcal`}
+                  label={`Calo · ${totals.calories} / ${liveDer} kcal`}
                   current={totals.calories}
-                  target={result.der}
+                  target={liveDer}
                   color="#eb0915"
                 />
                 <TrackingBar
-                  label={`Protein · ${Math.round(totals.protein)} / ${result.protein}g`}
+                  label={`Protein · ${Math.round(totals.protein)} / ${liveProtein}g`}
                   current={totals.protein}
-                  target={result.protein}
+                  target={liveProtein}
                   color="#1d4ed8"
                 />
                 <TrackingBar
-                  label={`Fat · ${Math.round(totals.fat)} / ${result.fat}g`}
+                  label={`Fat · ${Math.round(totals.fat)} / ${liveFat}g`}
                   current={totals.fat}
-                  target={result.fat}
+                  target={liveFat}
                   color="#b45309"
                 />
                 <TrackingBar
-                  label={`Carbs · ${Math.round(totals.carbs)} / ${result.carbs}g`}
+                  label={`Carbs · ${Math.round(totals.carbs)} / ${liveCarbs}g`}
                   current={totals.carbs}
-                  target={result.carbs}
+                  target={liveCarbs}
                   color="#065f46"
                 />
               </div>

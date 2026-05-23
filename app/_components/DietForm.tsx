@@ -380,6 +380,11 @@ export default function DietForm({ userName }: { userName: string }) {
     return computeRoadmap(w, form.goalInputMode, form.goalInputValue);
   })();
 
+  // Live calorie total: auto-balance always matches DER; manual mode uses edited macros
+  const liveDer = result
+    ? (autoBalance ? result.der : macroP * 4 + macroF * 9 + macroC * 4)
+    : 0;
+
   return (
     <>
       {/* ── Change Password Modal ── */}
@@ -798,7 +803,7 @@ export default function DietForm({ userName }: { userName: string }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
               <StatBox label="TDEE" value={`${result.tdee.toLocaleString("vi-VN")} kcal`}
                 sub="Năng lượng duy trì" />
-              <StatBox label="DER — Mục tiêu" value={`${result.der.toLocaleString("vi-VN")} kcal`}
+              <StatBox label="DER — Mục tiêu" value={`${liveDer.toLocaleString("vi-VN")} kcal`}
                 sub="Calo cần nạp mỗi ngày" highlight />
             </div>
 
@@ -918,7 +923,15 @@ export default function DietForm({ userName }: { userName: string }) {
         )}
 
         {/* ── Meal Plan Section (Bước 3) ── */}
-        {result && <MealPlanSection result={result} />}
+        {result && (
+          <MealPlanSection
+            result={result}
+            liveProtein={macroP}
+            liveFat={macroF}
+            liveCarbs={macroC}
+            liveDer={liveDer}
+          />
+        )}
 
       </div>
     </div>
