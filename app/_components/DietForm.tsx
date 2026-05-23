@@ -666,34 +666,6 @@ export default function DietForm({ userName }: { userName: string }) {
                       </span>
                     </div>
 
-                    {/* Live roadmap preview */}
-                    {liveRoadmap && (
-                      <div
-                        className="mt-2 rounded-xl px-4 py-3 text-sm"
-                        style={{
-                          background: "rgba(235,9,21,0.04)",
-                          border: "1px solid rgba(235,9,21,0.15)",
-                          color: "#12100d",
-                        }}
-                      >
-                        <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: "#eb0915" }}>
-                          Lộ trình dự kiến
-                        </p>
-                        Cần{" "}
-                        <span className="font-bold" style={{ color: "#eb0915" }}>
-                          {liveRoadmap.daysToGoal} ngày
-                        </span>{" "}
-                        để đạt mục tiêu, tương ứng với khoảng{" "}
-                        <span className="font-bold" style={{ color: "#eb0915" }}>
-                          {liveRoadmap.weeksToGoal} tuần
-                        </span>{" "}
-                        (khoảng{" "}
-                        <span className="font-bold" style={{ color: "#eb0915" }}>
-                          {liveRoadmap.monthsToGoal} tháng
-                        </span>
-                        ).
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
@@ -766,31 +738,24 @@ export default function DietForm({ userName }: { userName: string }) {
                 bg="rgba(16,185,129,0.07)" color="#065f46" />
             </div>
 
-            {result.daysToGoal !== null ? (
+            {liveRoadmap ? (
               <div
-                className="rounded-xl px-4 py-3 text-sm"
-                style={{
-                  background: "rgba(235,9,21,0.04)",
-                  border: "1px solid rgba(235,9,21,0.15)",
-                  color: "#12100d",
-                }}
+                className="rounded-xl p-4"
+                style={{ background: "#12100d" }}
               >
-                <p className="text-xs font-bold uppercase tracking-widest mb-1.5" style={{ color: "#eb0915" }}>
-                  Lộ trình giảm cân
+                <p
+                  className="text-xs font-semibold uppercase tracking-widest mb-3"
+                  style={{ color: "rgba(255,255,255,0.45)" }}
+                >
+                  Thời gian dự kiến
                 </p>
-                Cần{" "}
-                <span className="font-bold" style={{ color: "#eb0915" }}>
-                  {result.daysToGoal} ngày
-                </span>{" "}
-                để đạt mục tiêu, tương ứng với khoảng{" "}
-                <span className="font-bold" style={{ color: "#eb0915" }}>
-                  {result.weeksToGoal} tuần
-                </span>{" "}
-                (khoảng{" "}
-                <span className="font-bold" style={{ color: "#eb0915" }}>
-                  {result.monthsToGoal} tháng
-                </span>
-                ).
+                <p className="text-3xl font-black leading-none" style={{ color: "#eb0915" }}>
+                  {liveRoadmap.daysToGoal}{" "}
+                  <span className="text-lg font-bold" style={{ color: "rgba(255,255,255,0.7)" }}>ngày</span>
+                </p>
+                <p className="mt-1.5 text-sm font-medium" style={{ color: "rgba(255,255,255,0.5)" }}>
+                  ~{liveRoadmap.weeksToGoal} tuần&nbsp;/&nbsp;{liveRoadmap.monthsToGoal} tháng
+                </p>
               </div>
             ) : result.weeklyLoss !== null ? (
               <div
