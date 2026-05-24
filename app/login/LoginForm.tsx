@@ -23,13 +23,19 @@ export default function LoginForm({ kicked }: { kicked: boolean }) {
     setLoading(true);
     setError("");
 
-    // Track whether we started a hard redirect so finally doesn't reset the spinner
     let navigating = false;
+    // Abort fetch after 20s — slow mobile networks in Vietnam often hang
+    // indefinitely, making the spinner look frozen (the "trơ nút" symptom).
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20_000);
+
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), password }),
+        signal: controller.signal,
       });
 
       const data = (await res.json()) as LoginResponse;
@@ -39,17 +45,20 @@ export default function LoginForm({ kicked }: { kicked: boolean }) {
         return;
       }
 
-      // Hard redirect: forces a full page reload so the session cookie is sent
-      // in the next request's headers. router.push() (client-side nav) can
-      // silently fail on iOS Safari / Facebook / TikTok in-app browsers because
-      // the browser hasn't committed the Set-Cookie before the SPA route change.
       navigating = true;
-      window.location.href = data.role === "ADMIN" ? "/admin/users" : "/";
+      const dest = data.role === "ADMIN" ? "/admin/users" : "/";
+      // replace() clears the login entry from history and is more reliable
+      // than href in Facebook / TikTok in-app browsers on iOS.
+      window.location.replace(dest);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(`Lỗi kết nối: ${msg}. Vui lòng kiểm tra mạng và thử lại.`);
+      if (err instanceof Error && err.name === "AbortError") {
+        setError("Kết nối quá chậm. Vui lòng kiểm tra mạng và thử lại.");
+      } else {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(`Lỗi kết nối: ${msg}. Vui lòng thử lại.`);
+      }
     } finally {
-      // Keep spinner while navigating; reset only on error paths
+      clearTimeout(timeoutId);
       if (!navigating) setLoading(false);
     }
   }
@@ -100,6 +109,9 @@ export default function LoginForm({ kicked }: { kicked: boolean }) {
                 id="email"
                 type="email"
                 autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
