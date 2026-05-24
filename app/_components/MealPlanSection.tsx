@@ -565,17 +565,22 @@ export default function MealPlanSection({
     setAiError(null);
     setAiMeals(null);
 
-    const prompt = `Bạn là chuyên gia dinh dưỡng của Diet Plan. Thiết kế thực đơn ${mealCount} bữa cho khách hàng sau (1 lần gọi duy nhất, trả về toàn bộ ngày):
+    const prompt = `Thiết kế thực đơn ${mealCount} bữa cho khách hàng (1 ngày đầy đủ):
 
-Mục tiêu: ${liveDer} kcal | P:${liveProtein}g F:${liveFat}g C:${liveCarbs}g
-Thích: ${result.likes || "không có"} | Ghét: ${result.dislikes || "không có"}
+CHỈ SỐ MỤC TIÊU ĐÃ XÁC NHẬN (CỨNG — KHÔNG ĐƯỢC THAY ĐỔI):
+- Tổng năng lượng (DER): ${liveDer} kcal
+- Protein: ${liveProtein}g | Fat: ${liveFat}g | Carbs: ${liveCarbs}g
 
-Quy tắc bắt buộc:
+SAI SỐ TỐI ĐA CHO PHÉP: ±5% mỗi chỉ số. Tổng cộng tất cả bữa phải đạt đúng mục tiêu trên.
+
+SỞ THÍCH KHÁCH HÀNG:
+- Thích: ${result.likes || "không có"}
+- Ghét / dị ứng: ${result.dislikes || "không có"}
+
+YÊU CẦU BỔ SUNG:
 - Ưu tiên món khách THÍCH. Tuyệt đối không dùng món khách GHÉT.
 - Nếu ghét cơm trắng: thay bằng cơm lứt, khoai lang hoặc bún gạo lứt.
-- Cấm tuyệt đối: ức gà, lòng trắng trứng, nước ép, sữa hạt.
-- Ghi định lượng rõ ràng trong trường "name" (vd: "Cơm lứt 200g + Cá lóc hấp 150g + Rau cải 100g").
-- Tổng calo ≈ ${liveDer} kcal (±50 kcal).
+- Ghi định lượng gram rõ ràng trong trường "name" (vd: "Cơm lứt 200g + Cá lóc hấp 150g + Rau cải 100g").
 
 Trả về CHỈ JSON hợp lệ, không markdown, không giải thích:
 [{"mealName":"Bữa 1 - Sáng (7:00)","name":"Tên món 1 150g + Tên món 2 200g","calories":500,"protein":35,"fat":15,"carbs":55}]`;

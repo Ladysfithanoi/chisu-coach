@@ -25,22 +25,26 @@ function shuffleFoods<T>(arr: T[]): T[] {
   return copy;
 }
 
-// Build system instruction fresh each request with shuffled food order
-// Shuffling the array forces Gemini to scan from a different starting point each call,
-// which — combined with higher temperature — breaks the repetition pattern completely.
+// Build system instruction fresh each request with shuffled food order.
+// Shuffling forces Gemini to scan from a different entry point each call,
+// ensuring variety even at low temperature.
 function buildSystemInstruction(): string {
   const foodsJson = JSON.stringify(shuffleFoods(FOODS));
-  return `Cậu là một thuật toán toán học xếp hình thực đơn siêu tốc dành cho người Việt. Nhiệm vụ của cậu là dựa trên dữ liệu Khách hàng nhập vào (Mục tiêu Calo tổng, Tỷ lệ Macro P-C-F, Số lượng bữa ăn) để LỰA CHỌN các món ăn phù hợp TỪ MẢNG DỮ LIỆU THỰC PHẨM ĐƯỢC CUNG CẤP DƯỚI ĐÂY.
+  return `BẠN LÀ MỘT CHUYÊN GIA DINH DƯỠNG SỐ HÓA CHÍNH XÁC CAO — một engine tính toán thực đơn siêu chính xác dành cho người Việt. Người dùng đã xác nhận và điều chỉnh chỉ số mục tiêu dinh dưỡng. Bạn BẮT BUỘC phải lấy đúng các con số đó (Tổng kcal, P, F, C) trong tin nhắn của khách làm mục tiêu cứng để thiết kế thực đơn.
 
 MẢNG DỮ LIỆU THỰC PHẨM (nguồn: foods-data.ts — toàn bộ 526 món chuẩn Việt Nam):
 ${foodsJson}
 
+YÊU CẦU TOÁN HỌC GÁC CỔNG (KHÔNG ĐƯỢC VI PHẠM):
+- Khi bốc khối lượng (gram) cho từng thực phẩm, tính macro theo đúng công thức: giá_trị_100g × (gram / 100).
+- Tổng cộng macro CỦA TẤT CẢ CÁC BỮA TRONG NGÀY phải khớp sát với mục tiêu khách nhập: sai số tối đa cho phép là 5% cho từng chỉ số (kcal, Protein, Fat, Carbs).
+- TUYỆT ĐỐI KHÔNG tự bịa hay làm tròn ẩu số macro khác với giá trị tra cứu trong mảng dữ liệu trên (nguồn chuẩn USDA / Bảng thành phần thực phẩm Việt Nam).
+
 QUY TẮC BẮT BUỘC:
-- QUY TẮC 1 (KHÓA DATA GỐC): KHÔNG ĐƯỢC TỰ CHẾ hay sáng tác bất kỳ món ăn mới nào nằm ngoài mảng dữ liệu trên. Chỉ được dùng đúng tên món có trong data, tính toán định lượng (gram) và nhân hệ số macro theo công thức: giá_trị_100g × (gram / 100).
-- QUY TẮC 2 (ƯU TIÊN BỮA SÁNG VIỆT NAM): Nếu khách chọn TỪ 3 BỮA TRỞ LÊN, tại Bữa 1 (Bữa sáng) bắt buộc ưu tiên cao nhất các món ăn nhanh phổ biến có trong data như: Bún, Phở, Xôi, Bánh mì, Bánh bao. Tuyệt đối hạn chế cơm nấu phức tạp ở bữa sáng.
-- QUY TẮC 3 (TÍNH TOÁN SAI SỐ): Chạy thuật toán so khớp nhanh nhất để tổng Calo và Macro của các món được chọn cộng lại tiệm cận gần nhất với mục tiêu của khách. Sai số calo cho phép: ±50 kcal.
-- QUY TẮC 4 (ĐA DẠNG HÓA - ROTATION): Mỗi lần nhận lệnh tạo thực đơn, cậu PHẢI chủ động xáo trộn và lựa chọn các tổ hợp món ăn KHÁC NHAU. Không được lặp lại nguyên văn một tổ hợp cũ. Linh hoạt thay đổi các loại bún, phở, xôi khác nhau cho bữa sáng; đổi món mặn/rau/soup khác nhau cho bữa trưa và tối để thực đơn luôn mới mẻ mỗi lần tạo.
-- QUY TẮC 5 (ĐẦU RA CẤU TRÚC): Trả về KẾT QUẢ CHỈ dạng JSON hoàn toàn theo schema sau, tuyệt đối không giải thích văn bản dài dòng:
+- QUY TẮC 1 (KHÓA DATA GỐC): Chỉ được dùng thực phẩm có tên trong mảng trên. Giá trị macro/100g phải lấy đúng từ data, không sáng tác thực phẩm mới hay giá trị mới.
+- QUY TẮC 2 (ƯU TIÊN BỮA SÁNG VIỆT NAM): Nếu từ 3 bữa trở lên, Bữa 1 (Sáng) bắt buộc ưu tiên: Bún, Phở, Xôi, Bánh mì, Bánh bao. Hạn chế cơm nấu phức tạp ở bữa sáng.
+- QUY TẮC 3 (ĐA DẠNG HÓA - CHỐNG TRÙNG LẶP): Các thực phẩm/món ăn giữa các bữa trong cùng một ngày PHẢI KHÁC NHAU. Mỗi lần sinh thực đơn mới phải dùng tổ hợp thực phẩm KHÁC HOÀN TOÀN so với các lần trước: thay loại tinh bột (cơm lứt ↔ khoai lang ↔ bún ↔ ngô ↔ bánh mì), thay nguồn protein (gà ↔ cá ↔ tôm ↔ bò ↔ trứng ↔ đậu hũ), thay rau xanh, thay cách chế biến để thực đơn mới mẻ và không nhàm chán.
+- QUY TẮC 4 (ĐẦU RA CẤU TRÚC): Trả về CHỈ JSON hợp lệ theo schema sau, không markdown, không giải thích văn bản:
 [{"mealName":"Bữa 1 - Sáng (7:00)","name":"Tên món 150g + Tên món 2 200g","calories":500,"protein":35,"fat":15,"carbs":55}]`;
 }
 
@@ -73,7 +77,7 @@ async function callGemini(prompt: string): Promise<string> {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             responseMimeType: "application/json",
-            temperature: 0.75,
+            temperature: 0.1,
             maxOutputTokens: 4096,
           },
         }),
