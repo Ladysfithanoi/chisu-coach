@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, FormEvent } from "react";
-import { useRouter } from "next/navigation";
 
 interface LoginResponse {
   ok?: boolean;
@@ -10,7 +9,6 @@ interface LoginResponse {
 }
 
 export default function LoginForm({ kicked }: { kicked: boolean }) {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(
@@ -25,6 +23,8 @@ export default function LoginForm({ kicked }: { kicked: boolean }) {
     setLoading(true);
     setError("");
 
+    // Track whether we started a hard redirect so finally doesn't reset the spinner
+    let navigating = false;
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
@@ -39,12 +39,18 @@ export default function LoginForm({ kicked }: { kicked: boolean }) {
         return;
       }
 
-      router.push(data.role === "ADMIN" ? "/admin/users" : "/");
-      router.refresh();
-    } catch {
-      setError("Lỗi kết nối. Vui lòng kiểm tra mạng và thử lại.");
+      // Hard redirect: forces a full page reload so the session cookie is sent
+      // in the next request's headers. router.push() (client-side nav) can
+      // silently fail on iOS Safari / Facebook / TikTok in-app browsers because
+      // the browser hasn't committed the Set-Cookie before the SPA route change.
+      navigating = true;
+      window.location.href = data.role === "ADMIN" ? "/admin/users" : "/";
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`Lỗi kết nối: ${msg}. Vui lòng kiểm tra mạng và thử lại.`);
     } finally {
-      setLoading(false);
+      // Keep spinner while navigating; reset only on error paths
+      if (!navigating) setLoading(false);
     }
   }
 
