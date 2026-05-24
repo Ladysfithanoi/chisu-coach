@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, useRef, FormEvent } from "react";
 
 interface LoginResponse {
   ok?: boolean;
@@ -16,16 +16,22 @@ export default function LoginForm({ kicked }: { kicked: boolean }) {
   );
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  // Shown as a clickable fallback if window.location.replace() is silently
+  // swallowed by WKWebView (Facebook / TikTok in-app browser on iOS 17).
+  const [successDest, setSuccessDest] = useState<string | null>(null);
+  // Ref-based guard prevents double-submission on rapid double-tap —
+  // React state updates are async and can miss back-to-back taps on iOS.
+  const submittingRef = useRef(false);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (loading) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
     setError("");
+    setSuccessDest(null);
 
     let navigating = false;
-    // Abort fetch after 20s — slow mobile networks in Vietnam often hang
-    // indefinitely, making the spinner look frozen (the "trơ nút" symptom).
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 20_000);
 
@@ -47,9 +53,19 @@ export default function LoginForm({ kicked }: { kicked: boolean }) {
 
       navigating = true;
       const dest = data.role === "ADMIN" ? "/admin/users" : "/";
-      // replace() clears the login entry from history and is more reliable
-      // than href in Facebook / TikTok in-app browsers on iOS.
-      window.location.replace(dest);
+
+      // setTimeout(0) flushes the current JS call stack before navigating.
+      // Calling location.replace() directly inside an async callback can be
+      // silently swallowed by WKWebView on iOS 17 (Facebook/TikTok in-app).
+      setTimeout(() => { window.location.replace(dest); }, 0);
+
+      // If still on this page after 2s the navigation was blocked silently.
+      // Surface a clickable link so the user is never left stranded.
+      setTimeout(() => {
+        setSuccessDest(dest);
+        setLoading(false);
+      }, 2000);
+
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         setError("Kết nối quá chậm. Vui lòng kiểm tra mạng và thử lại.");
@@ -59,6 +75,7 @@ export default function LoginForm({ kicked }: { kicked: boolean }) {
       }
     } finally {
       clearTimeout(timeoutId);
+      submittingRef.current = false;
       if (!navigating) setLoading(false);
     }
   }
@@ -166,6 +183,26 @@ export default function LoginForm({ kicked }: { kicked: boolean }) {
                 </button>
               </div>
             </div>
+
+            {/* Success fallback — shown only when navigation is silently blocked */}
+            {successDest && (
+              <div
+                className="rounded-xl px-4 py-3 text-sm font-medium text-center"
+                style={{
+                  background: "rgba(22,163,74,0.08)",
+                  border: "1px solid rgba(22,163,74,0.3)",
+                  color: "#15803d",
+                }}
+              >
+                Đăng nhập thành công!{" "}
+                <a
+                  href={successDest}
+                  style={{ color: "#15803d", fontWeight: 700, textDecoration: "underline" }}
+                >
+                  Nhấn đây để vào trang →
+                </a>
+              </div>
+            )}
 
             {/* Error / Kicked Message */}
             {error && (

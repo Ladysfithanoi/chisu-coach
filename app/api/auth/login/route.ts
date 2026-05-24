@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     const response = NextResponse.json({ ok: true, role: user.role });
+    response.headers.set("Cache-Control", "no-store");
     response.cookies.set(COOKIE_NAME, token, {
       httpOnly: true,
       sameSite: "lax",
