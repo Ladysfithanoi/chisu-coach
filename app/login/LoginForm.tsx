@@ -36,11 +36,19 @@ export default function LoginForm({ kicked }: { kicked: boolean }) {
     const timeoutId = setTimeout(() => controller.abort(), 20_000);
 
     try {
+      // iOS Keychain autofill can populate the input DOM value without
+      // triggering React's onChange, leaving state empty. Read directly
+      // from the DOM as a fallback so the correct credentials are sent.
+      const domEmail = (document.getElementById("email") as HTMLInputElement | null)?.value ?? "";
+      const domPassword = (document.getElementById("password") as HTMLInputElement | null)?.value ?? "";
+      const finalEmail = (email || domEmail).trim();
+      const finalPassword = password || domPassword;
+
       const res = await fetch("/api/auth/login", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ email: finalEmail, password: finalPassword }),
         signal: controller.signal,
       });
 
@@ -232,6 +240,9 @@ export default function LoginForm({ kicked }: { kicked: boolean }) {
                 background: loading ? "rgba(235,9,21,0.55)" : "#eb0915",
                 color: "#ffffff",
                 cursor: loading ? "not-allowed" : "pointer",
+                // Eliminates WebKit's 300ms tap-delay on iOS Safari so the
+                // button responds instantly on first touch without double-tap.
+                touchAction: "manipulation",
               }}
             >
               {loading ? (
