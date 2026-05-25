@@ -580,42 +580,14 @@ export default function MealPlanSection({
     setAiError(null);
     setAiMeals(null);
 
-    const prompt = `Thiết kế thực đơn CHÍNH XÁC ${mealCount} BỮA cho khách hàng (1 ngày đầy đủ):
-
-SỐ BỮA ĂN: ${mealCount} BỮA — KHÔNG ĐƯỢC THÊM hoặc BỚT dù 1 bữa.
-
-CHỈ SỐ MỤC TIÊU CỨNG (TUYỆT ĐỐI KHÔNG ĐƯỢC THAY ĐỔI):
-- Tổng năng lượng (DER): ${liveDer} kcal
-- Protein: ${liveProtein}g | Fat: ${liveFat}g | Carbs: ${liveCarbs}g
-
-NGƯỠNG SAI SỐ MACRO (CỨNG): ±5g cho Protein/Fat/Carbs — ±30 kcal cho Calo.
-Protein tổng TUYỆT ĐỐI không được vượt quá ${liveProtein + 5}g. Không dồn đạm làm Protein gấp đôi mục tiêu.
-
-CÔNG THỨC TÍNH MACRO JSON BỮA ĂN LẺ (BẮT BUỘC):
-Trường "carbs" (và protein/fat/calories) của mỗi bữa = Σ(food.carbs_per_100g × gram_thực_tế / 100).
-Ví dụ: 200g khoai lang (26.5g carbs/100g) + 100g cải thảo (3.2g carbs/100g) → carbs bữa = 53 + 3.2 = 56.2g.
-TUYỆT ĐỐI không dùng remainingCarbs, số dư ngân sách, hay bất kỳ giá trị quota nào làm trường carbs JSON.
-
-SỞ THÍCH KHÁCH HÀNG:
-- Thích: ${result.likes || "không có"}
-- Ghét / dị ứng: ${result.dislikes || "không có"}
-
-YÊU CẦU BỔ SUNG:
-- Ưu tiên món khách THÍCH. Tuyệt đối không dùng món khách GHÉT.
-- Nếu ghét cơm trắng: thay bằng cơm lứt, khoai lang hoặc bún gạo lứt.
-- Ghi định lượng gram rõ ràng trong trường "name" (vd: "Cơm lứt 200g + Cá lóc hấp 150g + Rau cải 100g").
-
-Trả về CHỈ JSON hợp lệ, không markdown, không giải thích:
-[{"mealName":"Bữa 1 - Sáng (7:00)","name":"Tên món 1 150g + Tên món 2 200g","calories":500,"protein":35,"fat":15,"carbs":55}]`;
-
     try {
       const res = await fetch("/api/gemini", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt,
           macros: { calories: liveDer, protein: liveProtein, fat: liveFat, carbs: liveCarbs },
           mealCount,
+          preferences: { likes: result.likes, dislikes: result.dislikes },
         }),
       });
 
