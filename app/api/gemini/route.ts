@@ -152,6 +152,7 @@ YÊU CẦU TOÁN HỌC GÁC CỔNG (KHÔNG ĐƯỢC VI PHẠM):
 - Trường "carbs", "protein", "fat", "calories" trong JSON output của MỖI BỮA = Σ(macro_per_100g × grams_thực_tế / 100) của từng thực phẩm trong bữa đó. Ví dụ: 200g khoai lang (carbs=26.5/100g) → đóng góp 53g carbs vào bữa. Không bao giờ được gán số dư ngân sách ngày vào đây.
 - Tổng cộng macro CỦA TẤT CẢ CÁC BỮA TRONG NGÀY phải khớp mục tiêu với sai số tuyệt đối: ±5g cho Protein/Fat/Carbs — ±30 kcal cho Calo. TUYỆT ĐỐI không để Protein vọt gấp đôi mục tiêu.
 - TUYỆT ĐỐI KHÔNG tự bịa hay làm tròn ẩu số macro khác với giá trị tra cứu trong mảng dữ liệu trên (nguồn chuẩn USDA / Bảng thành phần thực phẩm Việt Nam).
+- CẤM GIAN LẬN SỐ: Nếu budget Carbs của ngày đã hết, giải pháp duy nhất là KHÔNG đưa tinh bột vào thực đơn. TUYỆT ĐỐI không đưa khoai lang/cơm/bún vào rồi gán trường carbs = 0 hoặc số âm để lách quy tắc — backend sẽ phát hiện và ghi đè bằng số DB thực tế.
 
 QUY TẮC BẮT BUỘC:
 - QUY TẮC 1 (KHÓA DATA GỐC): Chỉ được dùng thực phẩm có tên trong mảng trên. Giá trị macro/100g phải lấy đúng từ data, không sáng tác thực phẩm mới hay giá trị mới.
@@ -166,21 +167,116 @@ function isRetryableStatus(status: number): boolean {
   return [400, 429, 500, 503].includes(status);
 }
 
-// Lightweight parser for backend validation — mirrors frontend parseAiResponse logic
-function tryParseAiMeals(text: string): Array<{ protein: number; fat: number; carbs: number; calories: number }> | null {
+// ─── Backend Meal Types & Parsers ────────────────────────────────────────────
+
+interface AiMealRaw {
+  mealName: string;
+  name: string;
+  calories: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+}
+
+// Parse AI JSON for both validation and recalculation
+function tryParseAiMeals(text: string): AiMealRaw[] | null {
   try {
     const cleaned = text.replace(/```(?:json)?\s*/gi, "").replace(/```\s*/g, "").trim();
     const parsed = JSON.parse(cleaned) as unknown;
     if (!Array.isArray(parsed)) return null;
     return (parsed as Record<string, unknown>[]).map(m => ({
-      protein: Number(m.protein ?? 0),
-      fat: Number(m.fat ?? 0),
-      carbs: Number(m.carbs ?? 0),
+      mealName: String(m.mealName ?? ""),
+      name:     String(m.name     ?? ""),
+      protein:  Number(m.protein  ?? 0),
+      fat:      Number(m.fat      ?? 0),
+      carbs:    Number(m.carbs    ?? 0),
       calories: Number(m.calories ?? 0),
     }));
   } catch {
     return null;
   }
+}
+
+// ─── Server-Side Macro Recalculation ─────────────────────────────────────────
+
+// Fuzzy-match a short AI food name against the FOODS DB
+function findBestMatchingFood(query: string): FoodItem | null {
+  const q = query.toLowerCase().trim();
+
+  // 1. Exact name match
+  const exact = FOODS.find(f => f.name.toLowerCase() === q);
+  if (exact) return exact;
+
+  // 2. DB name contains the full query as a substring
+  const containsFull = FOODS.filter(f => f.name.toLowerCase().includes(q));
+  if (containsFull.length === 1) return containsFull[0];
+  if (containsFull.length > 1)
+    return containsFull.sort((a, b) => a.name.length - b.name.length)[0];
+
+  // 3. First 2 words of query found as consecutive substring in DB name
+  const words = q.split(/\s+/).filter(w => w.length > 1);
+  if (words.length >= 2) {
+    const prefix = words.slice(0, 2).join(" ");
+    const prefixMatch = FOODS.filter(f => f.name.toLowerCase().includes(prefix));
+    if (prefixMatch.length > 0)
+      return prefixMatch.sort((a, b) => a.name.length - b.name.length)[0];
+  }
+
+  // 4. Every significant word (length > 2) of query found in DB name
+  const sigWords = words.filter(w => w.length > 2);
+  if (sigWords.length > 0) {
+    const allWords = FOODS.filter(f => {
+      const n = f.name.toLowerCase();
+      return sigWords.every(w => n.includes(w));
+    });
+    if (allWords.length > 0)
+      return allWords.sort((a, b) => a.name.length - b.name.length)[0];
+  }
+
+  return null;
+}
+
+// Re-calculate meal macros from the ingredient list in the "name" field.
+// Overrides only when we matched ≥ 50% of ingredients — preventing partial
+// recalcs from producing worse numbers than the AI's values.
+function recalcMealFromIngredients(meal: AiMealRaw): AiMealRaw {
+  const segments = meal.name.split(/\s*\+\s*/);
+  let totalCal = 0, totalP = 0, totalF = 0, totalC = 0;
+  let matched = 0;
+
+  for (const seg of segments) {
+    // Match "Food name 150g" or "Food name 150 g"
+    const m = seg.trim().match(/^(.+?)\s+(\d+(?:\.\d+)?)\s*g\b/i);
+    if (!m) continue;
+    const grams = parseFloat(m[2]);
+    const db = findBestMatchingFood(m[1].trim());
+    if (!db) continue;
+    matched++;
+    totalCal += db.calories * grams / 100;
+    totalP   += db.protein  * grams / 100;
+    totalF   += db.fat      * grams / 100;
+    totalC   += db.carbs    * grams / 100;
+  }
+
+  const totalSegments = segments.filter(s => s.trim().match(/\d+\s*g/i)).length;
+  if (matched === 0 || matched < Math.ceil(totalSegments / 2)) return meal;
+
+  const recalcCarbs = Math.max(0, Math.round(totalC));
+  const aiCarbs     = Math.max(0, Math.round(meal.carbs));
+  if (Math.abs(recalcCarbs - aiCarbs) > 3) {
+    console.log(
+      `[Recalc] ${meal.mealName}: carbs ${aiCarbs}g → ${recalcCarbs}g` +
+      ` (matched ${matched}/${totalSegments} ingredients)`
+    );
+  }
+
+  return {
+    ...meal,
+    calories: Math.max(0, Math.round(totalCal)),
+    protein:  Math.max(0, Math.round(totalP)),
+    fat:      Math.max(0, Math.round(totalF)),
+    carbs:    recalcCarbs,
+  };
 }
 
 async function callGemini(
@@ -308,6 +404,13 @@ export async function POST(req: NextRequest) {
           rawResult = await callGemini(retryPrompt, fullMacros, validMealCount);
         }
       }
+    }
+
+    // Server-side macro re-calculation — override AI-gamed zeros with DB values
+    const mealsForRecalc = tryParseAiMeals(rawResult);
+    if (mealsForRecalc) {
+      const corrected = mealsForRecalc.map(m => recalcMealFromIngredients(m));
+      rawResult = JSON.stringify(corrected);
     }
 
     return NextResponse.json({ result: rawResult });
