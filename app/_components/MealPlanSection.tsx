@@ -580,13 +580,16 @@ export default function MealPlanSection({
     setAiError(null);
     setAiMeals(null);
 
-    const prompt = `Thiết kế thực đơn ${mealCount} bữa cho khách hàng (1 ngày đầy đủ):
+    const prompt = `Thiết kế thực đơn CHÍNH XÁC ${mealCount} BỮA cho khách hàng (1 ngày đầy đủ):
 
-CHỈ SỐ MỤC TIÊU ĐÃ XÁC NHẬN (CỨNG — KHÔNG ĐƯỢC THAY ĐỔI):
+SỐ BỮA ĂN: ${mealCount} BỮA — KHÔNG ĐƯỢC THÊM hoặc BỚT dù 1 bữa.
+
+CHỈ SỐ MỤC TIÊU CỨNG (TUYỆT ĐỐI KHÔNG ĐƯỢC THAY ĐỔI):
 - Tổng năng lượng (DER): ${liveDer} kcal
 - Protein: ${liveProtein}g | Fat: ${liveFat}g | Carbs: ${liveCarbs}g
 
-SAI SỐ TỐI ĐA CHO PHÉP: ±5% mỗi chỉ số. Tổng cộng tất cả bữa phải đạt đúng mục tiêu trên.
+NGƯỠNG SAI SỐ MACRO (CỨNG): ±5g cho Protein/Fat/Carbs — ±30 kcal cho Calo.
+Protein tổng TUYỆT ĐỐI không được vượt quá ${liveProtein + 5}g. Không dồn đạm làm Protein gấp đôi mục tiêu.
 
 SỞ THÍCH KHÁCH HÀNG:
 - Thích: ${result.likes || "không có"}
@@ -607,6 +610,7 @@ Trả về CHỈ JSON hợp lệ, không markdown, không giải thích:
         body: JSON.stringify({
           prompt,
           macros: { calories: liveDer, protein: liveProtein, fat: liveFat, carbs: liveCarbs },
+          mealCount,
         }),
       });
 
@@ -619,7 +623,8 @@ Trả về CHỈ JSON hợp lệ, không markdown, không giải thích:
       const data: { result?: string; error?: string } = await res.json();
       if (!res.ok || data.error) throw new Error(data.error ?? "Lỗi từ Gemini API");
       if (!data.result) throw new Error("Gemini không trả về nội dung");
-      const meals = parseAiResponse(data.result);
+      // Slice là tuyến phòng thủ cuối — loại bỏ bữa thừa dù AI có vượt rào
+      const meals = parseAiResponse(data.result).slice(0, mealCount);
       setAiMeals(meals);
     } catch (err) {
       setAiError(err instanceof Error ? err.message : "Đã xảy ra lỗi, vui lòng thử lại");

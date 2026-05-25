@@ -105,20 +105,34 @@ function buildFiberCarbPlan(targetCalories: number, targetCarbs: number): FiberP
 // Shuffling forces Gemini to scan from a different entry point each call,
 // ensuring variety even at low temperature.
 // macros (optional) — when provided, injects the Fiber-First Carb lever as Rule 5.
-function buildSystemInstruction(macros?: { calories: number; carbs: number }): string {
+function buildSystemInstruction(
+  macros?: { calories: number; protein: number; fat: number; carbs: number },
+  mealCount?: number
+): string {
   const foodsJson = JSON.stringify(shuffleFoods(FOODS));
 
-  // BƯỚC D — xây dựng khối quy tắc đòn bẩy carbs nếu có macros
+  // Rule 5 — Khóa số bữa ăn (khi có mealCount)
+  const mealCountNote = mealCount === 2
+    ? "\n  * 2 bữa: Bữa Sáng + Bữa Tối. TUYỆT ĐỐI không có Bữa 3 hay bữa phụ nào."
+    : mealCount === 3
+    ? "\n  * 3 bữa: Bữa Sáng + Bữa Trưa + Bữa Tối. TUYỆT ĐỐI không có Bữa 4."
+    : "";
+  const mealCountRuleBlock = mealCount ? `
+- QUY TẮC 5 — KHÓA SỐ BỮA ĂN (BẮT BUỘC TUYỆT ĐỐI):
+  * Mảng JSON phải có ĐÚNG ${mealCount} phần tử — không thêm, không bớt.
+  * Không tự ý ghép thêm bữa phụ, bữa xế, snack vào danh sách.${mealCountNote}` : "";
+
+  // Rule 5/6 — Fiber-First Carb Algorithm
+  const fiberRuleNum = mealCount ? 6 : 5;
   let fiberRuleBlock = '';
   if (macros && macros.calories > 0) {
     const plan = buildFiberCarbPlan(macros.calories, macros.carbs);
-    // BƯỚC D — ĐÈN XANH hoặc KHÓA VAN
     const stepD = plan.remainingCarbs > 0
       ? `ĐÈN XANH — Bổ sung tinh bột phức hợp (cơm lứt, khoai lang, yến mạch, bún gạo lứt...) để bù đúng ${plan.remainingCarbs}g carbs còn thiếu.`
       : `KHÓA VAN TUYỆT ĐỐI — Rau xanh đã đạt/vượt quota carbs (${plan.veggieCarbs}g ≥ ${macros.carbs}g). TUYỆT ĐỐI không thêm bất kỳ tinh bột nào vào thực đơn ngày hôm đó.`;
 
     fiberRuleBlock = `
-- QUY TẮC 5 — THUẬT TOÁN ĐÒN BẨY CARBS / FIBER-FIRST (BẮT BUỘC, GHI ĐÈ MỌI LOGIC KHÁC):
+- QUY TẮC ${fiberRuleNum} — THUẬT TOÁN ĐÒN BẨY CARBS / FIBER-FIRST (BẮT BUỘC, GHI ĐÈ MỌI LOGIC KHÁC):
   [A] Fiber mục tiêu ngày: ${plan.targetFiber}g  (= ${macros.calories} kcal × 14 ÷ 1000)
   [B] Danh sách rau xanh BẮT BUỘC đưa vào thực đơn — mỗi loại chỉ xuất hiện trong 1 bữa, không trùng giữa các bữa:
 ${plan.lines.join('\n')}
@@ -134,7 +148,7 @@ ${foodsJson}
 
 YÊU CẦU TOÁN HỌC GÁC CỔNG (KHÔNG ĐƯỢC VI PHẠM):
 - Khi bốc khối lượng (gram) cho từng thực phẩm, tính macro theo đúng công thức: giá_trị_100g × (gram / 100).
-- Tổng cộng macro CỦA TẤT CẢ CÁC BỮA TRONG NGÀY phải khớp sát với mục tiêu khách nhập: sai số tối đa cho phép là 5% cho từng chỉ số (kcal, Protein, Fat, Carbs).
+- Tổng cộng macro CỦA TẤT CẢ CÁC BỮA TRONG NGÀY phải khớp mục tiêu với sai số tuyệt đối: ±5g cho Protein/Fat/Carbs — ±30 kcal cho Calo. TUYỆT ĐỐI không để Protein vọt gấp đôi mục tiêu.
 - TUYỆT ĐỐI KHÔNG tự bịa hay làm tròn ẩu số macro khác với giá trị tra cứu trong mảng dữ liệu trên (nguồn chuẩn USDA / Bảng thành phần thực phẩm Việt Nam).
 
 QUY TẮC BẮT BUỘC:
@@ -142,7 +156,7 @@ QUY TẮC BẮT BUỘC:
 - QUY TẮC 2 (ƯU TIÊN BỮA SÁNG VIỆT NAM): Nếu từ 3 bữa trở lên, Bữa 1 (Sáng) bắt buộc ưu tiên: Bún, Phở, Xôi, Bánh mì, Bánh bao. Hạn chế cơm nấu phức tạp ở bữa sáng.
 - QUY TẮC 3 (ĐA DẠNG HÓA - CHỐNG TRÙNG LẶP): Các thực phẩm/món ăn giữa các bữa trong cùng một ngày PHẢI KHÁC NHAU. Mỗi lần sinh thực đơn mới phải dùng tổ hợp thực phẩm KHÁC HOÀN TOÀN so với các lần trước: thay loại tinh bột (cơm lứt ↔ khoai lang ↔ bún ↔ ngô ↔ bánh mì), thay nguồn protein (gà ↔ cá ↔ tôm ↔ bò ↔ trứng ↔ đậu hũ), thay rau xanh, thay cách chế biến để thực đơn mới mẻ và không nhàm chán.
 - QUY TẮC 4 (ĐẦU RA CẤU TRÚC): Trả về CHỈ JSON hợp lệ theo schema sau, không markdown, không giải thích văn bản:
-[{"mealName":"Bữa 1 - Sáng (7:00)","name":"Tên món 150g + Tên món 2 200g","calories":500,"protein":35,"fat":15,"carbs":55}]${fiberRuleBlock}`;
+[{"mealName":"Bữa 1 - Sáng (7:00)","name":"Tên món 150g + Tên món 2 200g","calories":500,"protein":35,"fat":15,"carbs":55}]${mealCountRuleBlock}${fiberRuleBlock}`;
 }
 
 // HTTP status codes that are transient — skip to next key instead of failing hard
@@ -150,9 +164,27 @@ function isRetryableStatus(status: number): boolean {
   return [400, 429, 500, 503].includes(status);
 }
 
+// Lightweight parser for backend validation — mirrors frontend parseAiResponse logic
+function tryParseAiMeals(text: string): Array<{ protein: number; fat: number; carbs: number; calories: number }> | null {
+  try {
+    const cleaned = text.replace(/```(?:json)?\s*/gi, "").replace(/```\s*/g, "").trim();
+    const parsed = JSON.parse(cleaned) as unknown;
+    if (!Array.isArray(parsed)) return null;
+    return (parsed as Record<string, unknown>[]).map(m => ({
+      protein: Number(m.protein ?? 0),
+      fat: Number(m.fat ?? 0),
+      carbs: Number(m.carbs ?? 0),
+      calories: Number(m.calories ?? 0),
+    }));
+  } catch {
+    return null;
+  }
+}
+
 async function callGemini(
   prompt: string,
-  macros?: { calories: number; carbs: number }
+  macros?: { calories: number; protein: number; fat: number; carbs: number },
+  mealCount?: number
 ): Promise<string> {
   if (API_KEYS.length === 0) {
     throw new Error(
@@ -172,7 +204,7 @@ async function callGemini(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           system_instruction: {
-            parts: [{ text: buildSystemInstruction(macros) }],
+            parts: [{ text: buildSystemInstruction(macros, mealCount) }],
           },
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
@@ -235,8 +267,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json() as {
       prompt?: string;
       macros?: { calories: number; protein: number; fat: number; carbs: number };
+      mealCount?: number;
     };
-    const { prompt, macros } = body;
+    const { prompt, macros, mealCount } = body;
 
     if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
       return NextResponse.json(
@@ -245,12 +278,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const calMacros = macros && macros.calories > 0
-      ? { calories: macros.calories, carbs: macros.carbs }
-      : undefined;
+    const fullMacros = macros && macros.calories > 0 ? macros : undefined;
+    const validMealCount = mealCount && mealCount >= 2 && mealCount <= 5 ? mealCount : undefined;
 
-    const result = await callGemini(prompt.trim(), calMacros);
-    return NextResponse.json({ result });
+    let rawResult = await callGemini(prompt.trim(), fullMacros, validMealCount);
+
+    // Validation: bắt lỗi số bữa sai và protein vọt — retry 1 lần nếu vi phạm
+    if (fullMacros && validMealCount) {
+      const parsed = tryParseAiMeals(rawResult);
+      if (parsed) {
+        const totalProtein = parsed.reduce((s, m) => s + m.protein, 0);
+        const mealCountWrong = parsed.length !== validMealCount;
+        const proteinWrong = totalProtein > fullMacros.protein + 15;
+
+        if (mealCountWrong || proteinWrong) {
+          const issues: string[] = [];
+          if (mealCountWrong) issues.push(`số bữa = ${parsed.length} (yêu cầu ${validMealCount})`);
+          if (proteinWrong) issues.push(`Protein tổng = ${Math.round(totalProtein)}g (mục tiêu ${fullMacros.protein}g)`);
+          console.log(`[Gemini] Validation failed: ${issues.join(", ")}. Retrying…`);
+
+          const retryPrompt = `${prompt.trim()}\n\nCẢNH BÁO: Lần trước AI sai — ${issues.join(" và ")}. Lần này BẮT BUỘC: đúng ${validMealCount} bữa, Protein tổng ≤ ${fullMacros.protein + 5}g.`;
+          rawResult = await callGemini(retryPrompt, fullMacros, validMealCount);
+        }
+      }
+    }
+
+    return NextResponse.json({ result: rawResult });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Lỗi không xác định từ Gemini";
