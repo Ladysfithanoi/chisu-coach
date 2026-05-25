@@ -55,10 +55,10 @@ function parseAiResponse(raw: string): AiMeal[] {
   return (parsed as Record<string, unknown>[]).map((item, i) => ({
     mealName: String(item.mealName ?? `Bữa ${i + 1}`),
     name: String(item.name ?? ""),
-    calories: Math.round(Number(item.calories ?? 0)),
-    protein: Math.round(Number(item.protein ?? 0)),
-    fat: Math.round(Number(item.fat ?? 0)),
-    carbs: Math.round(Number(item.carbs ?? 0)),
+    calories: Math.max(0, Math.round(Number(item.calories ?? 0))),
+    protein: Math.max(0, Math.round(Number(item.protein ?? 0))),
+    fat:     Math.max(0, Math.round(Number(item.fat     ?? 0))),
+    carbs:   Math.max(0, Math.round(Number(item.carbs   ?? 0))),
   }));
 }
 

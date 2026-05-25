@@ -290,11 +290,13 @@ export async function POST(req: NextRequest) {
         const totalProtein = parsed.reduce((s, m) => s + m.protein, 0);
         const mealCountWrong = parsed.length !== validMealCount;
         const proteinWrong = totalProtein > fullMacros.protein + 15;
+        const hasNegativeMacros = parsed.some(m => m.carbs < 0 || m.protein < 0 || m.fat < 0 || m.calories < 0);
 
-        if (mealCountWrong || proteinWrong) {
+        if (mealCountWrong || proteinWrong || hasNegativeMacros) {
           const issues: string[] = [];
           if (mealCountWrong) issues.push(`số bữa = ${parsed.length} (yêu cầu ${validMealCount})`);
           if (proteinWrong) issues.push(`Protein tổng = ${Math.round(totalProtein)}g (mục tiêu ${fullMacros.protein}g)`);
+          if (hasNegativeMacros) issues.push("macro âm trong JSON (carbs/protein/fat < 0)");
           console.log(`[Gemini] Validation failed: ${issues.join(", ")}. Retrying…`);
 
           const retryPrompt = `${prompt.trim()}\n\nCẢNH BÁO: Lần trước AI sai — ${issues.join(" và ")}. Lần này BẮT BUỘC: đúng ${validMealCount} bữa, Protein tổng ≤ ${fullMacros.protein + 5}g.`;
