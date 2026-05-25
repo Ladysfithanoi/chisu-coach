@@ -122,33 +122,35 @@ function buildNameOnlySystemInstruction(
   if (preferences?.likes)    prefLines.push(`Thích: ${preferences.likes}`);
   if (preferences?.dislikes) prefLines.push(`Ghét/Dị ứng: ${preferences.dislikes}`);
   const prefBlock = prefLines.length > 0
-    ? `\n5. SỞ THÍCH KHÁCH HÀNG:\n${prefLines.join('\n')}`
+    ? `\n4. SỞ THÍCH KHÁCH HÀNG: ${prefLines.join(' | ')}`
     : '';
 
-  return `Bạn là AI gợi ý thực phẩm cho thực đơn Việt Nam. Nhiệm vụ DUY NHẤT: trả về danh sách TÊN thực phẩm cho ${mealCount} bữa — không tính toán macro, không thêm số liệu.
+  return `Bạn là AI gợi ý tên thực phẩm đơn cho thực đơn Việt Nam. Nhiệm vụ DUY NHẤT: trả TÊN thực phẩm thô — Backend solver tự tính gram và macro theo công thức toán học riêng.
 
 OUTPUT BẮT BUỘC — chỉ JSON thuần, không markdown, không giải thích:
 {"meal_1":["tên1","tên2",...],"meal_2":[...],...,"meal_${mealCount}":[...]}
 
 ${mealCount} bữa lần lượt: ${labels.join(' | ')}
 
+FOOD COMBINATION GUARD (TUYỆT ĐỐI KHÔNG VI PHẠM — VI PHẠM = KẾT QUẢ SAI HOÀN TOÀN):
+- CHỈ gợi ý thực phẩm thô/nguyên liệu đơn: Ức gà, Cá lóc, Thịt bò nạc, Tôm sú, Đậu hũ, Trứng gà, Cơm lứt, Khoai lang, Bún gạo lứt, Yến mạch, Rau cải xanh...
+- CẤM TUYỆT ĐỐI các món ăn đã gộp nhiều thành phần (Phở bò tái, Bún bò Huế, Cơm tấm sườn nướng, Mì xào, Cơm chiên dương châu, Bún riêu, Bánh canh) — những món này đã chứa cả tinh bột lẫn đạm nên Backend không thể tách gram riêng lẻ.
+- Mỗi bữa: ĐÚNG 1 nguồn protein (Ức gà HOẶC Cá lóc HOẶC Thịt bò — KHÔNG ghép 2 loại đạm chung 1 bữa).
+- Mỗi bữa: ĐÚNG 1 nguồn tinh bột (Cơm lứt HOẶC Khoai lang HOẶC Bún gạo lứt — KHÔNG ghép 2 tinh bột chung 1 bữa).
+
 QUY TẮC:
-1. Tên phải khớp CHÍNH XÁC với các danh sách bên dưới.
-2. Mỗi bữa: 1-2 rau xanh + 1 tinh bột + 1-2 protein.
-3. Không lặp thực phẩm giữa các bữa.
-4. Bữa Sáng ưu tiên: Bún gạo lứt, Phở bò, Xôi gấc, Bánh mì, Cháo yến mạch, Bánh bao.${prefBlock}
+1. Tên phải khớp CHÍNH XÁC với danh sách bên dưới.
+2. Không lặp thực phẩm giữa các bữa trong ngày.
+3. Bữa Sáng ưu tiên: Bún gạo lứt, Xôi gấc, Bánh mì nguyên cám, Yến mạch, Cháo yến mạch.${prefBlock}
 
 DANH SÁCH RAU XANH (chọn 1-2/bữa):
 ${vegNames.join(', ')}
 
-DANH SÁCH TINH BỘT (chọn 1/bữa):
+DANH SÁCH TINH BỘT (chọn ĐÚNG 1/bữa):
 ${starchNames.join(', ')}
 
-DANH SÁCH PROTEIN (chọn 1-2/bữa):
-${proteinNames.join(', ')}
-
-DANH SÁCH CHẤT BÉO (tùy chọn, chỉ khi cần thêm fat):
-${fatNames.join(', ')}`;
+DANH SÁCH PROTEIN (chọn ĐÚNG 1/bữa):
+${proteinNames.join(', ')}`;
 }
 
 // ─── Name-Only User Prompt ───────────────────────────────────────────────────
@@ -195,8 +197,10 @@ interface MealSolution {
   items: Array<{ food: FoodItem; grams: number }>;
 }
 
-// Solve exact gram amounts so the meal hits per-meal macro targets.
-// Priority order: Vegetables (fiber) → Starches (remaining carbs) → Proteins → Fat gap fill.
+// Priority Matrix Solver — 3-step cascade:
+//   P1 FIBER   → lock veg grams to hit fiber target
+//   P2 PROTEIN → lock 1 protein food to hit protein target (±3g)
+//   P3 CALORIES → size 1 starch to fill remaining calories (Carbs/Fat flexible ±15%)
 function solveMealGrams(
   mealName: string,
   foodNames: string[],
@@ -210,16 +214,14 @@ function solveMealGrams(
     .map(f => ({ food: f, category: classifyFood(f) }));
 
   const vegs     = tagged.filter(t => t.category === 'vegetable');
-  const starches = tagged.filter(t => t.category === 'starch');
-  const proteins = tagged.filter(t => t.category === 'protein' || t.category === 'dish');
-  const fats     = tagged.filter(t => t.category === 'fat');
+  // Enforce 1 protein, 1 starch — take only first to prevent calorie explosion
+  const protein1 = tagged.find(t => t.category === 'protein' || t.category === 'dish') ?? null;
+  const starch1  = tagged.find(t => t.category === 'starch') ?? null;
 
   const items: Array<{ food: FoodItem; grams: number }> = [];
-  let vegCarbs = 0, vegProtein = 0, vegFat = 0;
-  let starchCarbs = 0, starchProtein = 0, starchFat = 0;
-  let proteinFat = 0;
 
-  // Step 1: Vegetables — distribute fiber target evenly across all veg
+  // ── P1: FIBER — lock veg grams ───────────────────────────────────────────
+  let vegCalories = 0, vegProtein = 0;
   if (vegs.length > 0) {
     const fiberPerVeg = mealFiberTarget / vegs.length;
     for (const { food } of vegs) {
@@ -228,50 +230,39 @@ function solveMealGrams(
         ? Math.round(Math.max(80, Math.min(200, (fiberPerVeg / fib) * 100)))
         : 100;
       items.push({ food, grams });
-      vegCarbs   += food.carbs   * grams / 100;
-      vegProtein += food.protein * grams / 100;
-      vegFat     += food.fat     * grams / 100;
+      vegCalories += food.calories * grams / 100;
+      vegProtein  += food.protein  * grams / 100;
     }
   }
 
-  // Step 2: Starches — fill remaining carbs after vegetables
-  const remainingCarbs = perMealMacros.carbs - vegCarbs;
-  if (starches.length > 0 && remainingCarbs > 5) {
-    const carbsPerStarch = remainingCarbs / starches.length;
-    for (const { food } of starches) {
-      const grams = food.carbs > 0
-        ? Math.round(Math.max(50, Math.min(300, (carbsPerStarch / food.carbs) * 100)))
-        : 100;
-      items.push({ food, grams });
-      starchCarbs   += food.carbs   * grams / 100;
-      starchProtein += food.protein * grams / 100;
-      starchFat     += food.fat     * grams / 100;
-    }
-  }
-
-  // Step 3: Proteins — fill remaining protein after veg + starch contributions
-  const proteinConsumed = vegProtein + starchProtein;
-  const remainingProtein = Math.max(perMealMacros.protein - proteinConsumed, 5);
-  if (proteins.length > 0) {
-    const proteinPerFood = remainingProtein / proteins.length;
-    for (const { food } of proteins) {
-      const grams = food.protein > 0
-        ? Math.round(Math.max(50, Math.min(300, (proteinPerFood / food.protein) * 100)))
-        : 100;
-      items.push({ food, grams });
-      proteinFat += food.fat * grams / 100;
-    }
-  }
-
-  // Step 4: Fat gap fill — add a small amount of fat food if fat is still short
-  const fatConsumed = vegFat + starchFat + proteinFat;
-  const fatGap = perMealMacros.fat - fatConsumed;
-  if (fats.length > 0 && fatGap > 3) {
-    const { food } = fats[0];
-    const grams = food.fat > 0
-      ? Math.round(Math.max(5, Math.min(30, (fatGap / food.fat) * 100)))
-      : 10;
+  // ── P2: PROTEIN — solve grams so protein hits target (±3g) ──────────────
+  let proteinFoodCalories = 0;
+  if (protein1) {
+    const { food } = protein1;
+    const remainingProtein = Math.max(perMealMacros.protein - vegProtein, 0);
+    const grams = food.protein > 0
+      ? Math.round(Math.max(50, Math.min(350, (remainingProtein / food.protein) * 100)))
+      : 100;
     items.push({ food, grams });
+    proteinFoodCalories = food.calories * grams / 100;
+  }
+
+  // ── P3: CALORIES — size starch to fill remaining calories ───────────────
+  // Carbs and Fat are flexible (±15%) as long as total calories match target.
+  const caloriesLocked = vegCalories + proteinFoodCalories;
+  const remainingCalories = perMealMacros.calories - caloriesLocked;
+
+  if (remainingCalories > 30) {
+    // Prefer AI-suggested starch; fall back to first starch in DB not already used
+    let starchFood = starch1?.food ?? null;
+    if (!starchFood) {
+      const usedNames = new Set(items.map(it => it.food.name));
+      starchFood = FOODS.find(f => classifyFood(f) === 'starch' && !usedNames.has(f.name) && f.calories > 0) ?? null;
+    }
+    if (starchFood) {
+      const grams = Math.round(Math.max(30, Math.min(400, (remainingCalories / starchFood.calories) * 100)));
+      items.push({ food: starchFood, grams });
+    }
   }
 
   return { mealName, items };
