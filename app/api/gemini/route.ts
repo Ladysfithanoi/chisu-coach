@@ -138,7 +138,8 @@ function buildSystemInstruction(
 ${plan.lines.join('\n')}
        → Tổng fiber từ rau: ${plan.totalFiber}g | Tổng carbs từ rau: ${plan.veggieCarbs}g
   [C] Carbs mục tiêu ngày: ${macros.carbs}g | Hiệu số còn lại sau rau: ${plan.remainingCarbs}g
-  [D] ${stepD}`;
+  [D] ${stepD}
+  ⚠️ TÁCH BIỆT OUTPUT (KHÔNG ĐƯỢC VI PHẠM): Các số ở [B][C][D] chỉ là logic CHỌN THỰC PHẨM — quyết định đưa rau/tinh bột nào vào thực đơn. Trường "carbs" (và "protein","fat","calories") trong mỗi object JSON output BẮT BUỘC được tính bằng: Σ(food_carbs_per_100g × gram_sử_dụng / 100) cho từng thực phẩm thực tế trong bữa. TUYỆT ĐỐI không gán remainingCarbs, veggieCarbs, hay bất kỳ số dư ngân sách nào vào trường output JSON.`;
   }
 
   return `BẠN LÀ MỘT CHUYÊN GIA DINH DƯỠNG SỐ HÓA CHÍNH XÁC CAO — một engine tính toán thực đơn siêu chính xác dành cho người Việt. Người dùng đã xác nhận và điều chỉnh chỉ số mục tiêu dinh dưỡng. Bạn BẮT BUỘC phải lấy đúng các con số đó (Tổng kcal, P, F, C) trong tin nhắn của khách làm mục tiêu cứng để thiết kế thực đơn.
@@ -148,6 +149,7 @@ ${foodsJson}
 
 YÊU CẦU TOÁN HỌC GÁC CỔNG (KHÔNG ĐƯỢC VI PHẠM):
 - Khi bốc khối lượng (gram) cho từng thực phẩm, tính macro theo đúng công thức: giá_trị_100g × (gram / 100).
+- Trường "carbs", "protein", "fat", "calories" trong JSON output của MỖI BỮA = Σ(macro_per_100g × grams_thực_tế / 100) của từng thực phẩm trong bữa đó. Ví dụ: 200g khoai lang (carbs=26.5/100g) → đóng góp 53g carbs vào bữa. Không bao giờ được gán số dư ngân sách ngày vào đây.
 - Tổng cộng macro CỦA TẤT CẢ CÁC BỮA TRONG NGÀY phải khớp mục tiêu với sai số tuyệt đối: ±5g cho Protein/Fat/Carbs — ±30 kcal cho Calo. TUYỆT ĐỐI không để Protein vọt gấp đôi mục tiêu.
 - TUYỆT ĐỐI KHÔNG tự bịa hay làm tròn ẩu số macro khác với giá trị tra cứu trong mảng dữ liệu trên (nguồn chuẩn USDA / Bảng thành phần thực phẩm Việt Nam).
 
@@ -288,14 +290,17 @@ export async function POST(req: NextRequest) {
       const parsed = tryParseAiMeals(rawResult);
       if (parsed) {
         const totalProtein = parsed.reduce((s, m) => s + m.protein, 0);
-        const mealCountWrong = parsed.length !== validMealCount;
-        const proteinWrong = totalProtein > fullMacros.protein + 15;
+        const totalCarbs   = parsed.reduce((s, m) => s + m.carbs,   0);
+        const mealCountWrong   = parsed.length !== validMealCount;
+        const proteinWrong     = totalProtein > fullMacros.protein + 15;
+        const carbsWrong       = Math.abs(totalCarbs - fullMacros.carbs) > 25;
         const hasNegativeMacros = parsed.some(m => m.carbs < 0 || m.protein < 0 || m.fat < 0 || m.calories < 0);
 
-        if (mealCountWrong || proteinWrong || hasNegativeMacros) {
+        if (mealCountWrong || proteinWrong || carbsWrong || hasNegativeMacros) {
           const issues: string[] = [];
-          if (mealCountWrong) issues.push(`số bữa = ${parsed.length} (yêu cầu ${validMealCount})`);
-          if (proteinWrong) issues.push(`Protein tổng = ${Math.round(totalProtein)}g (mục tiêu ${fullMacros.protein}g)`);
+          if (mealCountWrong)    issues.push(`số bữa = ${parsed.length} (yêu cầu ${validMealCount})`);
+          if (proteinWrong)      issues.push(`Protein tổng = ${Math.round(totalProtein)}g (mục tiêu ${fullMacros.protein}g)`);
+          if (carbsWrong)        issues.push(`Carbs tổng = ${Math.round(totalCarbs)}g lệch xa mục tiêu ${fullMacros.carbs}g — AI đang nhầm remainingCarbs vào JSON`);
           if (hasNegativeMacros) issues.push("macro âm trong JSON (carbs/protein/fat < 0)");
           console.log(`[Gemini] Validation failed: ${issues.join(", ")}. Retrying…`);
 

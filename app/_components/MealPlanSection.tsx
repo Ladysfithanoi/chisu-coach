@@ -591,6 +591,11 @@ CHỈ SỐ MỤC TIÊU CỨNG (TUYỆT ĐỐI KHÔNG ĐƯỢC THAY ĐỔI):
 NGƯỠNG SAI SỐ MACRO (CỨNG): ±5g cho Protein/Fat/Carbs — ±30 kcal cho Calo.
 Protein tổng TUYỆT ĐỐI không được vượt quá ${liveProtein + 5}g. Không dồn đạm làm Protein gấp đôi mục tiêu.
 
+CÔNG THỨC TÍNH MACRO JSON BỮA ĂN LẺ (BẮT BUỘC):
+Trường "carbs" (và protein/fat/calories) của mỗi bữa = Σ(food.carbs_per_100g × gram_thực_tế / 100).
+Ví dụ: 200g khoai lang (26.5g carbs/100g) + 100g cải thảo (3.2g carbs/100g) → carbs bữa = 53 + 3.2 = 56.2g.
+TUYỆT ĐỐI không dùng remainingCarbs, số dư ngân sách, hay bất kỳ giá trị quota nào làm trường carbs JSON.
+
 SỞ THÍCH KHÁCH HÀNG:
 - Thích: ${result.likes || "không có"}
 - Ghét / dị ứng: ${result.dislikes || "không có"}
