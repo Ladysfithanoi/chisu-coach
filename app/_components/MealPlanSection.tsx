@@ -17,6 +17,11 @@ interface AiMeal {
   carbs: number;
 }
 
+interface SavedIngredient {
+  food: FoodItem;
+  grams: number;
+}
+
 interface ManualFood {
   id: string;
   name: string;
@@ -24,6 +29,7 @@ interface ManualFood {
   protein: number;
   fat: number;
   carbs: number;
+  ingredients: SavedIngredient[];
 }
 
 type Tab = "ai" | "manual";
@@ -396,6 +402,7 @@ function IngredientSearchRow({
 }) {
   const results = isActive && row.query ? searchFoods(row.query) : [];
   const macros = row.food ? computeRowMacros(row.food, row.grams) : null;
+  const [gramsInput, setGramsInput] = useState(String(row.grams));
 
   return (
     <div className="space-y-1.5">
@@ -442,9 +449,13 @@ function IngredientSearchRow({
         <div className="flex items-center gap-1 flex-shrink-0">
           <input
             type="number"
-            value={row.grams}
+            value={gramsInput}
             min={1}
-            onChange={e => onGramsChange(Math.max(1, parseInt(e.target.value) || 100))}
+            onChange={e => {
+              setGramsInput(e.target.value);
+              const parsed = parseInt(e.target.value);
+              if (!isNaN(parsed) && parsed >= 1) onGramsChange(parsed);
+            }}
             className="dp-input text-center"
             style={{ width: "68px" }}
           />
@@ -541,18 +552,22 @@ export default function MealPlanSection({
   const [manualFoods, setManualFoods] = useState<ManualFood[]>([]);
   const [rows, setRows] = useState<IngredientRow[]>(() => [newRow()]);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [editingMealId, setEditingMealId] = useState<string | null>(null);
 
   const [pdfLoading, setPdfLoading] = useState(false);
 
-  const totals = manualFoods.reduce(
-    (a, f) => ({
-      calories: a.calories + f.calories,
-      protein: a.protein + f.protein,
-      fat: a.fat + f.fat,
-      carbs: a.carbs + f.carbs,
-    }),
-    { calories: 0, protein: 0, fat: 0, carbs: 0 }
-  );
+  // Bữa đang được chỉnh sửa bị loại khỏi tracking để PT thấy ngân sách thực
+  const totals = manualFoods
+    .filter(f => f.id !== editingMealId)
+    .reduce(
+      (a, f) => ({
+        calories: a.calories + f.calories,
+        protein: a.protein + f.protein,
+        fat: a.fat + f.fat,
+        carbs: a.carbs + f.carbs,
+      }),
+      { calories: 0, protein: 0, fat: 0, carbs: 0 }
+    );
 
   // ── AI generation ─────────────────────────────────────────────────────────
 
@@ -589,7 +604,10 @@ Trả về CHỈ JSON hợp lệ, không markdown, không giải thích:
       const res = await fetch("/api/gemini", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({
+          prompt,
+          macros: { calories: liveDer, protein: liveProtein, fat: liveFat, carbs: liveCarbs },
+        }),
       });
 
       if (res.status === 401) {
@@ -639,21 +657,60 @@ Trả về CHỈ JSON hợp lệ, không markdown, không giải thích:
       { calories: 0, protein: 0, fat: 0, carbs: 0 }
     );
 
-    const mealName =
-      "Bữa thủ công: " + filled.map(r => `${r.food.name} (${r.grams}g)`).join(" + ");
+    const ingredients: SavedIngredient[] = filled.map(r => ({ food: r.food, grams: r.grams }));
 
-    setManualFoods(prev => [
-      ...prev,
-      {
-        id: `${Date.now()}-${Math.random()}`,
-        name: mealName,
-        calories: Math.round(total.calories),
-        protein: Math.round(total.protein),
-        fat: Math.round(total.fat),
-        carbs: Math.round(total.carbs),
-      },
-    ]);
+    if (editingMealId !== null) {
+      // Cập nhật bữa đang sửa, giữ nguyên vị trí trong danh sách
+      setManualFoods(prev => prev.map(f => {
+        if (f.id !== editingMealId) return f;
+        const idx = prev.findIndex(m => m.id === editingMealId);
+        const mealName = `Bữa ${idx + 1}: ` + filled.map(r => `${r.food.name} (${r.grams}g)`).join(" + ");
+        return {
+          ...f,
+          name: mealName,
+          calories: Math.round(total.calories),
+          protein: Math.round(total.protein),
+          fat: Math.round(total.fat),
+          carbs: Math.round(total.carbs),
+          ingredients,
+        };
+      }));
+      setEditingMealId(null);
+    } else {
+      const mealOrder = manualFoods.length + 1;
+      const mealName = `Bữa ${mealOrder}: ` + filled.map(r => `${r.food.name} (${r.grams}g)`).join(" + ");
+      setManualFoods(prev => [
+        ...prev,
+        {
+          id: `${Date.now()}-${Math.random()}`,
+          name: mealName,
+          calories: Math.round(total.calories),
+          protein: Math.round(total.protein),
+          fat: Math.round(total.fat),
+          carbs: Math.round(total.carbs),
+          ingredients,
+        },
+      ]);
+    }
 
+    setRows([newRow()]);
+    setActiveDropdown(null);
+  }
+
+  function handleEditMeal(meal: ManualFood) {
+    const restoredRows: IngredientRow[] = meal.ingredients.map(ing => ({
+      id: `${Date.now()}-${Math.random()}`,
+      query: ing.food.name,
+      food: ing.food,
+      grams: ing.grams,
+    }));
+    setRows(restoredRows.length > 0 ? restoredRows : [newRow()]);
+    setEditingMealId(meal.id);
+    setActiveDropdown(null);
+  }
+
+  function handleCancelEdit() {
+    setEditingMealId(null);
     setRows([newRow()]);
     setActiveDropdown(null);
   }
@@ -899,6 +956,14 @@ Trả về CHỈ JSON hợp lệ, không markdown, không giải thích:
 
               {/* Meal builder */}
               <div className="space-y-4">
+                {editingMealId !== null && (
+                  <div
+                    className="px-3 py-2 rounded-lg text-xs font-bold"
+                    style={{ background: "rgba(235,9,21,0.06)", color: "#eb0915", border: "1px solid rgba(235,9,21,0.18)" }}
+                  >
+                    ✏️ Đang chỉnh sửa — {manualFoods.find(f => f.id === editingMealId)?.name.split(':')[0] ?? 'Bữa ăn'}
+                  </div>
+                )}
                 <p className="dp-label">Ghép bữa ăn từ nguyên liệu</p>
                 <div className="space-y-4">
                   {rows.map((row) => (
@@ -993,52 +1058,103 @@ Trả về CHỈ JSON hợp lệ, không markdown, không giải thích:
                   );
                 })()}
 
-                <button
-                  type="button"
-                  onClick={handleConfirmMeal}
-                  disabled={rows.every(r => r.food === null)}
-                  className="w-full py-3 rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
-                  style={{
-                    background: rows.some(r => r.food !== null) ? "#12100d" : "rgba(18,16,13,0.3)",
-                    color: "#ffffff",
-                    cursor: rows.some(r => r.food !== null) ? "pointer" : "not-allowed",
-                  }}
-                >
-                  ✓ Xác nhận gộp bữa
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleConfirmMeal}
+                    disabled={rows.every(r => r.food === null)}
+                    className="flex-1 py-3 rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
+                    style={{
+                      background: rows.some(r => r.food !== null) ? "#12100d" : "rgba(18,16,13,0.3)",
+                      color: "#ffffff",
+                      cursor: rows.some(r => r.food !== null) ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    {editingMealId !== null ? "↩ Cập nhật Bữa ăn" : "✓ Xác nhận gộp bữa"}
+                  </button>
+                  {editingMealId !== null && (
+                    <button
+                      type="button"
+                      onClick={handleCancelEdit}
+                      className="py-3 px-4 rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
+                      style={{ background: "rgba(18,16,13,0.08)", color: "rgba(18,16,13,0.6)" }}
+                    >
+                      Hủy
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Food list */}
               {manualFoods.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "rgba(18,16,13,0.35)" }}>
-                    Danh sách đã nhập ({manualFoods.length} món)
+                    Danh sách đã nhập ({manualFoods.length} bữa)
                   </p>
-                  {manualFoods.map((food) => (
-                    <div
-                      key={food.id}
-                      className="flex items-center gap-3 rounded-xl px-4 py-3"
-                      style={{ background: "rgba(18,16,13,0.025)", border: "1px solid rgba(18,16,13,0.07)" }}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate" style={{ color: "#12100d" }}>
-                          {food.name}
-                        </p>
-                        <p className="text-xs mt-0.5" style={{ color: "rgba(18,16,13,0.4)" }}>
-                          {Math.round(food.calories)} kcal &nbsp;·&nbsp; P:{Math.round(food.protein)}g F:{Math.round(food.fat)}g C:{Math.round(food.carbs)}g
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setManualFoods((prev) => prev.filter((f) => f.id !== food.id))}
-                        className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-base font-bold transition-all"
-                        style={{ background: "rgba(235,9,21,0.08)", color: "#eb0915" }}
-                        aria-label="Xoá"
+                  {manualFoods.map((food) => {
+                    const isEditing = food.id === editingMealId;
+                    return (
+                      <div
+                        key={food.id}
+                        className="flex items-center gap-2 rounded-xl px-4 py-3"
+                        style={{
+                          background: isEditing ? "rgba(235,9,21,0.04)" : "rgba(18,16,13,0.025)",
+                          border: isEditing ? "1px solid rgba(235,9,21,0.25)" : "1px solid rgba(18,16,13,0.07)",
+                          opacity: isEditing ? 0.75 : 1,
+                        }}
                       >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-sm font-semibold truncate" style={{ color: "#12100d" }}>
+                              {food.name}
+                            </p>
+                            {isEditing && (
+                              <span
+                                className="text-xs font-bold px-1.5 py-0.5 rounded flex-shrink-0"
+                                style={{ background: "rgba(235,9,21,0.1)", color: "#eb0915" }}
+                              >
+                                đang sửa
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs mt-0.5" style={{ color: "rgba(18,16,13,0.4)" }}>
+                            {Math.round(food.calories)} kcal &nbsp;·&nbsp; P:{Math.round(food.protein)}g F:{Math.round(food.fat)}g C:{Math.round(food.carbs)}g
+                          </p>
+                        </div>
+                        {/* Nút chỉnh sửa ✏️ */}
+                        <button
+                          type="button"
+                          onClick={() => handleEditMeal(food)}
+                          disabled={isEditing}
+                          className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm transition-all"
+                          style={{
+                            background: isEditing ? "rgba(18,16,13,0.04)" : "rgba(18,16,13,0.07)",
+                            color: isEditing ? "rgba(18,16,13,0.2)" : "rgba(18,16,13,0.5)",
+                            cursor: isEditing ? "not-allowed" : "pointer",
+                          }}
+                          aria-label="Chỉnh sửa bữa"
+                        >
+                          ✏️
+                        </button>
+                        {/* Nút xoá */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isEditing) {
+                              setEditingMealId(null);
+                              setRows([newRow()]);
+                            }
+                            setManualFoods((prev) => prev.filter((f) => f.id !== food.id));
+                          }}
+                          className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-base font-bold transition-all"
+                          style={{ background: "rgba(235,9,21,0.08)", color: "#eb0915" }}
+                          aria-label="Xoá bữa"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { FOODS } from "@/lib/foods-data";
+import { FOODS, type FoodItem } from "@/lib/foods-data";
 import { getAuth } from "@/lib/auth";
 
 // Always read env vars fresh — never use build-time cached values
@@ -25,11 +25,108 @@ function shuffleFoods<T>(arr: T[]): T[] {
   return copy;
 }
 
+// ─── Fiber-First Carb Algorithm ───────────────────────────────────────────────
+
+const VEG_KEYWORDS_EN = [
+  'Leaves', 'Chayote', 'Kohlrabi', 'Broccoli', 'Cauliflower', 'Cucumber', 'Celery',
+  'Asparagus', 'Spinach', 'Tomato', 'Carrot', 'Melon', 'Corn', 'Eggplant', 'Lettuce',
+  'Kale', 'Pumpkin', 'Gourd', 'Cabbage', 'Greens', 'Sprouts', 'Pachyrrhizus', 'Mustard', 'Napa',
+];
+const VEG_KEYWORDS_VN = [
+  'Rau ', 'Cải ', 'Cải bắp', 'Cải thảo', 'Cải xoăn', 'Súp lơ',
+  'Dưa chuột', 'Cần tây', 'Măng tây', 'Cà tím', 'Xà lách',
+  'Cà chua', 'Cà rốt', 'Ngô ', 'Giá đỗ', 'Su su', 'Su hào',
+  'Củ đậu', 'Mướp', 'Bầu', 'Bí xanh', 'Bí đao', 'Bí đỏ',
+];
+
+function isVegetable(food: FoodItem): boolean {
+  const nameEn = food.nameEn ?? '';
+  return (
+    VEG_KEYWORDS_EN.some(k => nameEn.includes(k)) ||
+    VEG_KEYWORDS_VN.some(k => food.name.includes(k))
+  );
+}
+
+interface VegWithFiber extends FoodItem { fiber: number; }
+
+interface FiberPlan {
+  targetFiber: number;
+  totalFiber: number;
+  veggieCarbs: number;
+  remainingCarbs: number;
+  lines: string[];
+}
+
+function buildFiberCarbPlan(targetCalories: number, targetCarbs: number): FiberPlan {
+  // BƯỚC A — tính lượng chất xơ bắt buộc
+  const targetFiber = Math.round((targetCalories / 1000) * 14);
+
+  // BƯỚC B — lấy rau xanh ngẫu nhiên không trùng lặp
+  const vegPool = shuffleFoods(
+    FOODS.filter((f): f is VegWithFiber =>
+      isVegetable(f) && typeof f.fiber === 'number' && f.fiber > 0
+    )
+  );
+
+  const selected: Array<{ food: VegWithFiber; grams: number }> = [];
+  let accumFiber = 0;
+  let accumCarbs = 0;
+
+  for (const veg of vegPool) {
+    if (accumFiber >= targetFiber) break;
+    const fiberNeeded = targetFiber - accumFiber;
+    const gramsToTarget = Math.ceil((fiberNeeded / veg.fiber) * 100);
+    // Mỗi loại rau: tối thiểu 80g, tối đa 200g (khẩu phần thực tế)
+    const grams = Math.max(80, Math.min(gramsToTarget, 200));
+
+    selected.push({ food: veg, grams });
+    accumFiber += veg.fiber * grams / 100;
+    accumCarbs += veg.carbs * grams / 100;
+  }
+
+  // BƯỚC C — tính hiệu số Carbs còn lại sau rau
+  const veggieCarbs = Math.round(accumCarbs);
+  const remainingCarbs = targetCarbs - veggieCarbs;
+
+  const lines = selected.map(({ food, grams }) =>
+    `    • ${food.name} ${grams}g  (fiber: ${(food.fiber * grams / 100).toFixed(1)}g, carbs: ${(food.carbs * grams / 100).toFixed(1)}g)`
+  );
+
+  return {
+    targetFiber,
+    totalFiber: Math.round(accumFiber * 10) / 10,
+    veggieCarbs,
+    remainingCarbs,
+    lines,
+  };
+}
+
 // Build system instruction fresh each request with shuffled food order.
 // Shuffling forces Gemini to scan from a different entry point each call,
 // ensuring variety even at low temperature.
-function buildSystemInstruction(): string {
+// macros (optional) — when provided, injects the Fiber-First Carb lever as Rule 5.
+function buildSystemInstruction(macros?: { calories: number; carbs: number }): string {
   const foodsJson = JSON.stringify(shuffleFoods(FOODS));
+
+  // BƯỚC D — xây dựng khối quy tắc đòn bẩy carbs nếu có macros
+  let fiberRuleBlock = '';
+  if (macros && macros.calories > 0) {
+    const plan = buildFiberCarbPlan(macros.calories, macros.carbs);
+    // BƯỚC D — ĐÈN XANH hoặc KHÓA VAN
+    const stepD = plan.remainingCarbs > 0
+      ? `ĐÈN XANH — Bổ sung tinh bột phức hợp (cơm lứt, khoai lang, yến mạch, bún gạo lứt...) để bù đúng ${plan.remainingCarbs}g carbs còn thiếu.`
+      : `KHÓA VAN TUYỆT ĐỐI — Rau xanh đã đạt/vượt quota carbs (${plan.veggieCarbs}g ≥ ${macros.carbs}g). TUYỆT ĐỐI không thêm bất kỳ tinh bột nào vào thực đơn ngày hôm đó.`;
+
+    fiberRuleBlock = `
+- QUY TẮC 5 — THUẬT TOÁN ĐÒN BẨY CARBS / FIBER-FIRST (BẮT BUỘC, GHI ĐÈ MỌI LOGIC KHÁC):
+  [A] Fiber mục tiêu ngày: ${plan.targetFiber}g  (= ${macros.calories} kcal × 14 ÷ 1000)
+  [B] Danh sách rau xanh BẮT BUỘC đưa vào thực đơn — mỗi loại chỉ xuất hiện trong 1 bữa, không trùng giữa các bữa:
+${plan.lines.join('\n')}
+       → Tổng fiber từ rau: ${plan.totalFiber}g | Tổng carbs từ rau: ${plan.veggieCarbs}g
+  [C] Carbs mục tiêu ngày: ${macros.carbs}g | Hiệu số còn lại sau rau: ${plan.remainingCarbs}g
+  [D] ${stepD}`;
+  }
+
   return `BẠN LÀ MỘT CHUYÊN GIA DINH DƯỠNG SỐ HÓA CHÍNH XÁC CAO — một engine tính toán thực đơn siêu chính xác dành cho người Việt. Người dùng đã xác nhận và điều chỉnh chỉ số mục tiêu dinh dưỡng. Bạn BẮT BUỘC phải lấy đúng các con số đó (Tổng kcal, P, F, C) trong tin nhắn của khách làm mục tiêu cứng để thiết kế thực đơn.
 
 MẢNG DỮ LIỆU THỰC PHẨM (nguồn: foods-data.ts — toàn bộ 526 món chuẩn Việt Nam):
@@ -45,7 +142,7 @@ QUY TẮC BẮT BUỘC:
 - QUY TẮC 2 (ƯU TIÊN BỮA SÁNG VIỆT NAM): Nếu từ 3 bữa trở lên, Bữa 1 (Sáng) bắt buộc ưu tiên: Bún, Phở, Xôi, Bánh mì, Bánh bao. Hạn chế cơm nấu phức tạp ở bữa sáng.
 - QUY TẮC 3 (ĐA DẠNG HÓA - CHỐNG TRÙNG LẶP): Các thực phẩm/món ăn giữa các bữa trong cùng một ngày PHẢI KHÁC NHAU. Mỗi lần sinh thực đơn mới phải dùng tổ hợp thực phẩm KHÁC HOÀN TOÀN so với các lần trước: thay loại tinh bột (cơm lứt ↔ khoai lang ↔ bún ↔ ngô ↔ bánh mì), thay nguồn protein (gà ↔ cá ↔ tôm ↔ bò ↔ trứng ↔ đậu hũ), thay rau xanh, thay cách chế biến để thực đơn mới mẻ và không nhàm chán.
 - QUY TẮC 4 (ĐẦU RA CẤU TRÚC): Trả về CHỈ JSON hợp lệ theo schema sau, không markdown, không giải thích văn bản:
-[{"mealName":"Bữa 1 - Sáng (7:00)","name":"Tên món 150g + Tên món 2 200g","calories":500,"protein":35,"fat":15,"carbs":55}]`;
+[{"mealName":"Bữa 1 - Sáng (7:00)","name":"Tên món 150g + Tên món 2 200g","calories":500,"protein":35,"fat":15,"carbs":55}]${fiberRuleBlock}`;
 }
 
 // HTTP status codes that are transient — skip to next key instead of failing hard
@@ -53,7 +150,10 @@ function isRetryableStatus(status: number): boolean {
   return [400, 429, 500, 503].includes(status);
 }
 
-async function callGemini(prompt: string): Promise<string> {
+async function callGemini(
+  prompt: string,
+  macros?: { calories: number; carbs: number }
+): Promise<string> {
   if (API_KEYS.length === 0) {
     throw new Error(
       "Chưa cấu hình GEMINI_API_KEYS trong .env.local (định dạng: key1,key2,...)"
@@ -72,7 +172,7 @@ async function callGemini(prompt: string): Promise<string> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           system_instruction: {
-            parts: [{ text: buildSystemInstruction() }],
+            parts: [{ text: buildSystemInstruction(macros) }],
           },
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
@@ -132,8 +232,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json() as { prompt?: string };
-    const { prompt } = body;
+    const body = await req.json() as {
+      prompt?: string;
+      macros?: { calories: number; protein: number; fat: number; carbs: number };
+    };
+    const { prompt, macros } = body;
 
     if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
       return NextResponse.json(
@@ -142,7 +245,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await callGemini(prompt.trim());
+    const calMacros = macros && macros.calories > 0
+      ? { calories: macros.calories, carbs: macros.carbs }
+      : undefined;
+
+    const result = await callGemini(prompt.trim(), calMacros);
     return NextResponse.json({ result });
   } catch (error) {
     const message =
