@@ -374,6 +374,50 @@ function runCoreEngine(
     }
   }
 
+  // ── Stage 3.5: FAT BALANCER — fill calorie gap with cooking oil ──────────
+  // Oil adds calories without shifting Protein or Carbs at all.
+  // Guard: only inject when there is both a calorie gap AND remaining fat budget.
+  const oilFood = FOODS.find(f => f.name === 'Dầu ăn (Chung)');
+  const mealOilItem: Array<{ food: FoodItem; grams: number } | null> = Array(mealCount).fill(null);
+
+  if (oilFood && mealCount > 0) {
+    let currentCalories = 0;
+    let currentFat = 0;
+
+    for (let i = 0; i < mealCount; i++) {
+      for (const { food, grams } of mealVegItems[i]) {
+        currentCalories += food.calories * grams / 100;
+        currentFat      += food.fat      * grams / 100;
+      }
+      if (mealStarchItem[i]) {
+        currentCalories += mealStarchItem[i]!.food.calories * mealStarchItem[i]!.grams / 100;
+        currentFat      += mealStarchItem[i]!.food.fat      * mealStarchItem[i]!.grams / 100;
+      }
+      for (const { food, grams } of mealProteinItems[i]) {
+        currentCalories += food.calories * grams / 100;
+        currentFat      += food.fat      * grams / 100;
+      }
+    }
+
+    const missingCalories    = macros.calories - currentCalories;
+    const remainingFatBudget = macros.fat - currentFat;
+
+    if (missingCalories > 0 && remainingFatBudget > 0) {
+      // How many grams of oil cover the gap vs. how many the fat budget allows
+      const oilByCalories  = (missingCalories   * 100) / oilFood.calories;  // e.g. 169 * 100 / 884 ≈ 19g
+      const oilByFatBudget = (remainingFatBudget * 100) / oilFood.fat;       // fat budget → grams
+      const totalOilGrams  = Math.min(oilByCalories, oilByFatBudget);
+      const perMealOilGrams = totalOilGrams / mealCount;
+
+      if (perMealOilGrams >= 2) { // skip if less than 2g per meal — not meaningful
+        for (let i = 0; i < mealCount; i++) {
+          const grams = Math.round(perMealOilGrams);
+          if (grams > 0) mealOilItem[i] = { food: oilFood, grams };
+        }
+      }
+    }
+  }
+
   // ── Stage 4: Assemble MealSolution per meal ───────────────────────────────
   return Array.from({ length: mealCount }, (_, i) => ({
     mealName: getMealTimeLabel(i, mealCount),
@@ -381,6 +425,7 @@ function runCoreEngine(
       ...mealVegItems[i],
       ...(mealStarchItem[i] ? [mealStarchItem[i]!] : []),
       ...mealProteinItems[i],
+      ...(mealOilItem[i]    ? [mealOilItem[i]!]    : []),
     ],
   }));
 }
