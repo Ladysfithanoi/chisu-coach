@@ -133,21 +133,21 @@ interface MealSolution {
   items: Array<{ food: FoodItem; grams: number }>;
 }
 
-// ─── Core Diet Engine — 10-step sequential solver ────────────────────────────
+// ─── Core Diet Engine — 5-step "Protein First" solver ────────────────────────
 //
-//  Bước 1 : perMealCalories = targetCalories / mealsCount
-//  Bước 2 : totalTargetFiber = (targetCalories / 1000) × 14
-//  Bước 3 : perMealFiber = totalTargetFiber / mealsCount
-//  Bước 4 : TRÁI CÂY (f.tag==='fruit') → locked 100g
+//  Bước 1 : perMealCalories = targetCalories / mealsCount  (reference)
+//  Bước 2 : PROTEIN FIRST — targetMealAnimalProtein = (targetProtein/meals) − 12
+//           PROTEIN (f.tag==='protein') → khóa cứng ngay, min 150g
+//  Bước 3 : totalTargetFiber = (targetCalories/1000)×14 → perMealFiber
+//           TRÁI CÂY (f.tag==='fruit') → locked 100g
 //           RAU (f.tag==='veggie') → fiber-driven, clamped [80,200]
-//  Bước 5 : currentMealVeggieCarbs = carbsFromVeg + carbsFromFruit
-//  Bước 6 : neededStarchCarbs = (targetCarbs/meals) − currentMealVeggieCarbs
-//           TINH BỘT (f.tag==='starch') → starchGrams = round(neededCarbs/carbs×100), min 30g
-//  Bước 7 : mealPlantProtein = Σ protein từ rau + quả + tinh bột của bữa đó
-//  Bước 8 : neededMealProtein = (targetProtein/meals) − mealPlantProtein
-//           safety valve: if < 15g → dùng full perMealProtein
-//  Bước 9 : PROTEIN (f.tag==='protein') → meatGrams = round(needed/protein×100), min 150g
-//  Bước 10: Tổng Calo ngày vs target → bù Dầu ăn (gap > 5%) hoặc giảm tinh bột (dư > 5%)
+//  Bước 4 : currentMealCarbs = Σ carbs từ thịt+rau+quả
+//           neededStarchCarbs = (targetCarbs/meals) − currentMealCarbs
+//           TINH BỘT (f.tag==='starch') → starchGrams = round(needed/carbs×100), min 30g
+//  Bước 5 : Tổng calo ngày → so % thiếu Carbs vs Fat
+//           Carbs thiếu nhiều hơn → bù tinh bột phân bổ đều các bữa
+//           Fat thiếu nhiều hơn → bù Dầu ăn phân bổ đều các bữa
+//           Dư calo → scale down tinh bột, sai số mục tiêu < 2%
 function runCoreEngine(
   nameLists: Record<string, string[]>,
   macros: { calories: number; protein: number; fat: number; carbs: number },
@@ -176,7 +176,7 @@ function runCoreEngine(
       .slice(0, 2);
   }
 
-  // Bước 2–3: fiber targets
+  // Bước 3 prep: fiber targets
   const totalTargetFiber = (macros.calories / 1000) * 14;
   const perMealFiber     = totalTargetFiber / mealCount;
 
@@ -185,69 +185,19 @@ function runCoreEngine(
   for (let i = 0; i < mealCount; i++) {
     const items: Array<{ food: FoodItem; grams: number }> = [];
 
-    // ── Bước 4a: TRÁI CÂY — khóa cứng 100g ──────────────────────────────────
-    let fiberFromFruit = 0;
-    let carbsFromFruit = 0;
-    const fruitFood = pickByTag(i, 'fruit');
-    if (fruitFood) {
-      items.push({ food: fruitFood, grams: 100 });
-      used.add(fruitFood.name);
-      fiberFromFruit = fruitFood.fiber ?? 0;
-      carbsFromFruit = fruitFood.carbs;
-    }
-
-    // ── Bước 4b: RAU — tam suất theo fiber ───────────────────────────────────
-    const vegFoods = pickAllVeggies(i);
-    const vegFiberTarget = Math.max(0, perMealFiber - fiberFromFruit);
-    const fiberPerVeg    = vegFoods.length > 0 ? vegFiberTarget / vegFoods.length : 0;
-    let carbsFromVeg = 0;
-
-    for (const veg of vegFoods) {
-      const fib   = veg.fiber ?? 0;
-      const grams = fib > 0
-        ? Math.round(Math.max(80, Math.min(200, (fiberPerVeg / fib) * 100)))
-        : 100;
-      items.push({ food: veg, grams });
-      used.add(veg.name);
-      carbsFromVeg += veg.carbs * grams / 100;
-    }
-
-    // ── Bước 5: currentMealVeggieCarbs ───────────────────────────────────────
-    const currentMealVeggieCarbs = carbsFromVeg + carbsFromFruit;
-
-    // ── Bước 6: TINH BỘT — tam suất theo carbs ───────────────────────────────
-    const perMealCarbs      = macros.carbs / mealCount;
-    const neededStarchCarbs = Math.max(0, perMealCarbs - currentMealVeggieCarbs);
-    const starchFood        = pickByTag(i, 'starch');
-
-    if (starchFood && starchFood.carbs > 0) {
-      const rawGrams    = Math.round((neededStarchCarbs / starchFood.carbs) * 100);
-      const starchGrams = Math.max(30, rawGrams); // cấm 0g tinh bột
-      items.push({ food: starchFood, grams: starchGrams });
-      used.add(starchFood.name);
-    }
-
-    // ── Bước 7: mealPlantProtein ──────────────────────────────────────────────
-    const mealPlantProtein = items.reduce(
-      (s, { food, grams }) => s + food.protein * grams / 100,
-      0
-    );
-
-    // ── Bước 8: neededMealProtein ─────────────────────────────────────────────
-    const perMealProtein = macros.protein / mealCount;
-    let neededMealProtein = perMealProtein - mealPlantProtein;
-    if (neededMealProtein < 15) neededMealProtein = perMealProtein; // safety valve
-
-    // ── Bước 9: PROTEIN — tam suất thẳng mặt, sàn 150g ──────────────────────
+    // ── Bước 2: PROTEIN FIRST — khóa cứng đạm động vật trước tiên ────────────
+    // Trừ 12g safety buffer nhường chỗ cho đạm thực vật từ rau/tinh bột
+    const targetMealAnimalProtein = (macros.protein / mealCount) - 12;
     const banWheyLastMeal = mealCount >= 3 && i === mealCount - 1;
-    const meatFood        = pickByTag(i, 'protein', banWheyLastMeal);
+    const meatFood = pickByTag(i, 'protein', banWheyLastMeal);
 
     if (meatFood && meatFood.protein > 0) {
       if (isWhey(meatFood)) {
-        const wheyGrams = Math.max(30, Math.min(100, Math.round((neededMealProtein / meatFood.protein) * 100)));
+        const needed    = Math.max(10, targetMealAnimalProtein);
+        const wheyGrams = Math.max(30, Math.min(100, Math.round((needed / meatFood.protein) * 100)));
         items.push({ food: meatFood, grams: wheyGrams });
         used.add(meatFood.name);
-        const remainder = neededMealProtein - (meatFood.protein * wheyGrams / 100);
+        const remainder = needed - (meatFood.protein * wheyGrams / 100);
         if (remainder >= 5) {
           const realMeat = pickByTag(i, 'protein', true);
           if (realMeat && realMeat.protein > 0) {
@@ -257,40 +207,100 @@ function runCoreEngine(
           }
         }
       } else {
-        const meatGrams = Math.max(150, Math.round((neededMealProtein / meatFood.protein) * 100));
+        const needed    = Math.max(15, targetMealAnimalProtein);
+        const meatGrams = Math.max(150, Math.round((needed / meatFood.protein) * 100));
         items.push({ food: meatFood, grams: meatGrams });
         used.add(meatFood.name);
       }
     }
 
+    // ── Bước 3: FIBER & VEGGIE/FRUIT ─────────────────────────────────────────
+    let fiberFromFruit = 0;
+    const fruitFood = pickByTag(i, 'fruit');
+    if (fruitFood) {
+      items.push({ food: fruitFood, grams: 100 });
+      used.add(fruitFood.name);
+      fiberFromFruit = fruitFood.fiber ?? 0;
+    }
+
+    const vegFoods       = pickAllVeggies(i);
+    const vegFiberTarget = Math.max(0, perMealFiber - fiberFromFruit);
+    const fiberPerVeg    = vegFoods.length > 0 ? vegFiberTarget / vegFoods.length : 0;
+
+    for (const veg of vegFoods) {
+      const fib   = veg.fiber ?? 0;
+      const grams = fib > 0
+        ? Math.round(Math.max(80, Math.min(200, (fiberPerVeg / fib) * 100)))
+        : 100;
+      items.push({ food: veg, grams });
+      used.add(veg.name);
+    }
+
+    // ── Bước 4: TINH BỘT — bù carbs còn thiếu sau thịt+rau+quả ──────────────
+    const currentMealCarbs = items.reduce(
+      (s, { food, grams }) => s + food.carbs * grams / 100,
+      0
+    );
+    const perMealCarbs      = macros.carbs / mealCount;
+    const neededStarchCarbs = Math.max(0, perMealCarbs - currentMealCarbs);
+    const starchFood        = pickByTag(i, 'starch');
+
+    if (starchFood && starchFood.carbs > 0) {
+      const starchGrams = Math.max(30, Math.round((neededStarchCarbs / starchFood.carbs) * 100));
+      items.push({ food: starchFood, grams: starchGrams });
+      used.add(starchFood.name);
+    }
+
     mealItems.push(items);
   }
 
-  // ── Bước 10: Vá mịn Calories cuối ngày ───────────────────────────────────
-  const sumCal = (its: Array<{ food: FoodItem; grams: number }>) =>
+  // ── Bước 5: Vá mịn Calories cuối ngày — sai số < 2% ─────────────────────
+  const sumCal   = (its: Array<{ food: FoodItem; grams: number }>) =>
     its.reduce((s, { food, grams }) => s + food.calories * grams / 100, 0);
+  const sumCarbs = (its: Array<{ food: FoodItem; grams: number }>) =>
+    its.reduce((s, { food, grams }) => s + food.carbs * grams / 100, 0);
+  const sumFat   = (its: Array<{ food: FoodItem; grams: number }>) =>
+    its.reduce((s, { food, grams }) => s + food.fat * grams / 100, 0);
 
   const currentDayCalories = mealItems.reduce((s, its) => s + sumCal(its), 0);
   const calGap    = macros.calories - currentDayCalories;
-  const tolerance = macros.calories * 0.05; // 5% sai số
+  const tolerance = macros.calories * 0.02;
 
-  const oilFood = FOODS.find(f => f.name === 'Dầu ăn (Chung)');
+  if (calGap > tolerance) {
+    const currentDayCarbs = mealItems.reduce((s, its) => s + sumCarbs(its), 0);
+    const currentDayFat   = mealItems.reduce((s, its) => s + sumFat(its), 0);
+    const carbsDeficitPct = macros.carbs > 0 ? (macros.carbs - currentDayCarbs) / macros.carbs : 0;
+    const fatDeficitPct   = macros.fat   > 0 ? (macros.fat   - currentDayFat)   / macros.fat   : 0;
 
-  if (calGap > tolerance && oilFood && oilFood.calories > 0) {
-    // Thiếu Calo → bù Dầu ăn chia đều các bữa
-    const totalOilGrams   = (calGap / oilFood.calories) * 100;
-    const perMealOilGrams = Math.round(totalOilGrams / mealCount);
-    if (perMealOilGrams >= 2) {
-      for (let i = 0; i < mealCount; i++) {
-        mealItems[i].push({ food: oilFood, grams: perMealOilGrams });
+    if (carbsDeficitPct >= fatDeficitPct) {
+      // Carbs thiếu nhiều hơn → bù tinh bột vào từng bữa
+      const extraCalPerMeal = calGap / mealCount;
+      for (const its of mealItems) {
+        const starchItem = its.find(x => x.food.tag === 'starch');
+        if (starchItem && starchItem.food.calories > 0) {
+          const extraGrams = Math.round((extraCalPerMeal / starchItem.food.calories) * 100);
+          if (extraGrams >= 5) starchItem.grams += extraGrams;
+        }
+      }
+    } else {
+      // Fat thiếu nhiều hơn → bù dầu ăn vào từng bữa
+      const oilFood = FOODS.find(f => f.name === 'Dầu ăn (Chung)');
+      if (oilFood && oilFood.calories > 0) {
+        const totalOilGrams   = (calGap / oilFood.calories) * 100;
+        const perMealOilGrams = Math.round(totalOilGrams / mealCount);
+        if (perMealOilGrams >= 2) {
+          for (let i = 0; i < mealCount; i++) {
+            mealItems[i].push({ food: oilFood, grams: perMealOilGrams });
+          }
+        }
       }
     }
   } else if (calGap < -tolerance) {
-    // Dư Calo → giảm tỷ lệ tinh bột
+    // Dư Calo → scale down tinh bột
     const scale = Math.max(0.5, macros.calories / currentDayCalories);
-    if (scale < 0.97) {
-      for (const items of mealItems) {
-        for (const item of items) {
+    if (scale < 0.98) {
+      for (const its of mealItems) {
+        for (const item of its) {
           if (item.food.tag === 'starch') {
             item.grams = Math.max(30, Math.round(item.grams * scale));
           }
