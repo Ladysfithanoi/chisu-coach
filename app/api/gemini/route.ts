@@ -206,223 +206,149 @@ interface MealSolution {
   items: Array<{ food: FoodItem; grams: number }>;
 }
 
-// ─── Core Diet Engine — Template-based solver ────────────────────────────────
+// ─── Core Diet Engine — Clean-Sheet Solver ───────────────────────────────────
 //
-//  Template:   2 bữa → [main, main]
-//              3 bữa → [breakfast, main, main]
-//              4 bữa → [breakfast, main, snack, main]         (cal ≥ 1600)
-//              5 bữa → [breakfast, snack, main, snack, main]  (cal ≥ 2000)
+//  Luồng tuyến tính, không có scale-down, không break nửa chừng:
 //
-//  Bước A : Khóa cứng rau(150g tổng)/trái cây(100g) theo template → đo tổng VF macro
-//  Bước B : perMealProtein = (targetProtein − VFProtein) / meals
-//           PROTEIN → grams = round(perMealProtein / food.protein × 100)
-//  Bước C : perMealCarbs = (targetCarbs − VFCarbs) / meals
-//           TINH BỘT → grams = round(perMealCarbs / food.carbs × 100), 0g OK
-//  Bước D : Fat-first fill (Dầu ăn, vô điều kiện) → calorie gap tighten sai số < 10%
+//  Bước 1 : Khoá RAU(150g)/QUẢ(100g) theo template → đo vfPro/vfFat/vfCar
+//  Bước 2 : PROTEIN  grams = perMealPro / food.protein × 100
+//           Fat ceiling 8g/100g khi carbs>100 && fat≤60 (chặn trứng/gà quay/ba chỉ)
+//  Bước 3 : TINH BỘT grams = perMealCarbs / food.carbs × 100
+//           Nếu grams < 50g → bỏ bữa đó, dồn carbs sang bữa chính cuối
+//  Bước 4 : FAT — bù dầu ăn để lấp fat gap (chia đều các bữa)
+//  Bước 5 : Micro-Tuning Loop ≤ 5% error tại bữa chính cuối (±5g protein/starch, ±2/-1g dầu)
 function runCoreEngine(
   nameLists: Record<string, string[]>,
   macros: { calories: number; protein: number; fat: number; carbs: number },
   mealCount: number
 ): MealSolution[] {
   const templates = getMealTemplates(mealCount);
-  const used = new Set<string>();
-  const isWhey = (f: FoodItem) => f.name.toLowerCase().includes('whey');
+  const used      = new Set<string>();
+  const isWhey    = (f: FoodItem) => f.name.toLowerCase().includes('whey');
+  const needsLean = macros.carbs > 100 && macros.fat <= 60;
+  const LEAN_CEIL = 8; // g fat/100g
 
-  // When carbs target is high but fat budget is tight, block high-fat proteins
-  const needsLeanProtein = macros.carbs > 100 && macros.fat <= 60;
-  const LEAN_FAT_CEILING  = 8; // g fat per 100g — blocks eggs, roast chicken, fatty pork
-
-  function pickByTag(mealIndex: number, tag: string, noWhey = false): FoodItem | null {
-    const names = nameLists[`meal_${mealIndex + 1}`] ?? [];
-    return names
+  // ── pickFood: AI namelist trước, DB lean fallback cho protein ────────────────
+  function pickFood(
+    mealIdx: number,
+    tag: string,
+    opts: { noWhey?: boolean; maxFat?: number } = {}
+  ): FoodItem | null {
+    const names  = nameLists[`meal_${mealIdx + 1}`] ?? [];
+    const fromAI = names
       .map(n => findExactFood(n))
       .find((f): f is FoodItem =>
         f !== null &&
         f.tag === tag &&
         !used.has(f.name) &&
-        (!noWhey || !isWhey(f))
-      ) ?? null;
-  }
-
-  // Protein-specific picker: enforces fat ceiling then falls back to DB lean pool
-  function pickProtein(mealIndex: number, noWhey = false): FoodItem | null {
-    const names = nameLists[`meal_${mealIndex + 1}`] ?? [];
-    const fromAI = names
-      .map(n => findExactFood(n))
-      .find((f): f is FoodItem =>
-        f !== null &&
-        f.tag === 'protein' &&
-        !used.has(f.name) &&
-        (!noWhey || !isWhey(f)) &&
-        (!needsLeanProtein || f.fat <= LEAN_FAT_CEILING)
+        (!opts.noWhey  || !isWhey(f)) &&
+        (opts.maxFat === undefined || f.fat <= opts.maxFat)
       ) ?? null;
     if (fromAI) return fromAI;
-    // AI gave no lean option — pull directly from DB
-    if (needsLeanProtein) {
+    if (tag === 'protein' && opts.maxFat !== undefined) {
+      const cap = opts.maxFat;
       return FOODS.find(f =>
         f.tag === 'protein' &&
         !used.has(f.name) &&
-        (!noWhey || !isWhey(f)) &&
-        f.fat <= LEAN_FAT_CEILING &&
+        (!opts.noWhey || !isWhey(f)) &&
+        f.fat <= cap &&
         f.protein > 15
       ) ?? null;
     }
     return null;
   }
 
-  function pickAllVeggies(mealIndex: number): FoodItem[] {
-    const names = nameLists[`meal_${mealIndex + 1}`] ?? [];
+  function pickVeggies(mealIdx: number): FoodItem[] {
+    const names = nameLists[`meal_${mealIdx + 1}`] ?? [];
     return names
       .map(n => findExactFood(n))
       .filter((f): f is FoodItem => f !== null && f.tag === 'veggie' && !used.has(f.name))
       .slice(0, 2);
   }
 
+  function dayMacro() {
+    let cal = 0, pro = 0, fat = 0, car = 0;
+    for (const its of mealItems) {
+      for (const { food, grams } of its) {
+        cal += food.calories * grams / 100;
+        pro += food.protein  * grams / 100;
+        fat += food.fat      * grams / 100;
+        car += food.carbs    * grams / 100;
+      }
+    }
+    return { cal, pro, fat, car };
+  }
+
   const mealItems: Array<Array<{ food: FoodItem; grams: number }>> =
     Array.from({ length: mealCount }, () => []);
 
-  // ── Bước A: Khóa cứng rau(150g tổng)/trái cây(100g) theo template ─────────
-  let totalVFProtein = 0;
-  let totalVFCarbs   = 0;
-  let totalVFFat     = 0;
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Bước 1: Khoá RAU & QUẢ — đo tổng macro VF
+  // ─────────────────────────────────────────────────────────────────────────────
+  let vfPro = 0, vfFat = 0, vfCar = 0;
 
   for (let i = 0; i < mealCount; i++) {
     const tmpl = templates[i];
 
     if (tmpl.veggieGrams > 0) {
-      const vegFoods = pickAllVeggies(i);
-      const gramEach = vegFoods.length > 0 ? Math.round(tmpl.veggieGrams / vegFoods.length) : 0;
-      for (const veg of vegFoods) {
-        mealItems[i].push({ food: veg, grams: gramEach });
-        used.add(veg.name);
-        totalVFProtein += veg.protein * gramEach / 100;
-        totalVFCarbs   += veg.carbs   * gramEach / 100;
-        totalVFFat     += veg.fat     * gramEach / 100;
+      const vegs  = pickVeggies(i);
+      const gEach = vegs.length > 0 ? Math.round(tmpl.veggieGrams / vegs.length) : 0;
+      for (const v of vegs) {
+        mealItems[i].push({ food: v, grams: gEach });
+        used.add(v.name);
+        vfPro += v.protein * gEach / 100;
+        vfFat += v.fat     * gEach / 100;
+        vfCar += v.carbs   * gEach / 100;
       }
     }
 
     if (tmpl.fruitGrams > 0) {
-      const fruitFood = pickByTag(i, 'fruit');
-      if (fruitFood) {
-        mealItems[i].push({ food: fruitFood, grams: tmpl.fruitGrams });
-        used.add(fruitFood.name);
-        totalVFProtein += fruitFood.protein * tmpl.fruitGrams / 100;
-        totalVFCarbs   += fruitFood.carbs   * tmpl.fruitGrams / 100;
-        totalVFFat     += fruitFood.fat     * tmpl.fruitGrams / 100;
+      const fruit = pickFood(i, 'fruit');
+      if (fruit) {
+        mealItems[i].push({ food: fruit, grams: tmpl.fruitGrams });
+        used.add(fruit.name);
+        vfPro += fruit.protein * tmpl.fruitGrams / 100;
+        vfFat += fruit.fat     * tmpl.fruitGrams / 100;
+        vfCar += fruit.carbs   * tmpl.fruitGrams / 100;
       }
     }
   }
 
-  // ── Bước B: PROTEIN — chia đều cho toàn bộ các bữa ────────────────────────
-  const perMealProtein = Math.max(5, (macros.protein - totalVFProtein) / mealCount);
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Bước 2: PROTEIN — grams = perMealPro / food.protein × 100
+  // ─────────────────────────────────────────────────────────────────────────────
+  const protOpts  = needsLean ? { maxFat: LEAN_CEIL } : {};
+  const perMealPro = Math.max(5, (macros.protein - vfPro) / mealCount);
 
   for (let i = 0; i < mealCount; i++) {
-    const banWheyLastMeal = mealCount >= 3 && i === mealCount - 1;
-    const meatFood = pickProtein(i, banWheyLastMeal);
+    const noWheyLast = mealCount >= 3 && i === mealCount - 1;
+    const meat = pickFood(i, 'protein', { ...protOpts, noWhey: noWheyLast });
+    if (!meat || meat.protein <= 0) continue;
 
-    if (meatFood && meatFood.protein > 0) {
-      if (isWhey(meatFood)) {
-        const wheyGrams = Math.max(30, Math.min(100, Math.round((perMealProtein / meatFood.protein) * 100)));
-        mealItems[i].push({ food: meatFood, grams: wheyGrams });
-        used.add(meatFood.name);
-        const remainder = perMealProtein - (meatFood.protein * wheyGrams / 100);
-        if (remainder >= 5) {
-          const realMeat = pickProtein(i, true);
-          if (realMeat && realMeat.protein > 0) {
-            mealItems[i].push({ food: realMeat, grams: Math.round((remainder / realMeat.protein) * 100) });
-            used.add(realMeat.name);
-          }
-        }
-      } else {
-        mealItems[i].push({
-          food: meatFood,
-          grams: Math.round((perMealProtein / meatFood.protein) * 100),
-        });
-        used.add(meatFood.name);
-      }
-    }
-  }
-
-  // ── Bước C: TINH BỘT — chia đều cho toàn bộ các bữa, 0g cho phép ─────────
-  const perMealCarbs = (macros.carbs - totalVFCarbs) / mealCount;
-
-  for (let i = 0; i < mealCount; i++) {
-    if (perMealCarbs <= 0) continue;
-    const starchFood = pickByTag(i, 'starch');
-    if (starchFood && starchFood.carbs > 0) {
-      const starchGrams = Math.round((perMealCarbs / starchFood.carbs) * 100);
-      if (starchGrams > 0) {
-        mealItems[i].push({ food: starchFood, grams: starchGrams });
-        used.add(starchFood.name);
-      }
-    }
-  }
-
-  // ── Bước D: Fat-first fill + calorie gap tighten — sai số < 10% ───────────
-  const sumCal     = (its: Array<{ food: FoodItem; grams: number }>) =>
-    its.reduce((s, { food, grams }) => s + food.calories * grams / 100, 0);
-  const sumFat     = (its: Array<{ food: FoodItem; grams: number }>) =>
-    its.reduce((s, { food, grams }) => s + food.fat      * grams / 100, 0);
-  const sumCarbs   = (its: Array<{ food: FoodItem; grams: number }>) =>
-    its.reduce((s, { food, grams }) => s + food.carbs    * grams / 100, 0);
-  const sumProtein = (its: Array<{ food: FoodItem; grams: number }>) =>
-    its.reduce((s, { food, grams }) => s + food.protein  * grams / 100, 0);
-
-  // D1: Fat-first — bù fat bằng dầu ăn (vô điều kiện, sai số < 3g fat)
-  const oilFood = FOODS.find(f => f.name === 'Dầu ăn (Chung)')
-    ?? FOODS.find(f => f.tag === 'fat' && f.fat >= 80 && f.calories > 0);
-
-  const fatBefore = mealItems.reduce((s, its) => s + sumFat(its), 0);
-  const fatGap    = macros.fat - fatBefore;
-
-  if (fatGap > 3 && oilFood && oilFood.fat > 0) {
-    const totalOilGrams   = (fatGap / oilFood.fat) * 100;
-    const perMealOilGrams = Math.round(totalOilGrams / mealCount);
-    if (perMealOilGrams >= 1) {
-      for (let i = 0; i < mealCount; i++) {
-        mealItems[i].push({ food: oilFood, grams: perMealOilGrams });
-      }
-    }
-  }
-
-  // D2: Calorie gap (sau khi fat bù xong) — bù/cắt tinh bột, sai số < 10%
-  const currentDayCalories = mealItems.reduce((s, its) => s + sumCal(its), 0);
-  const calGap    = macros.calories - currentDayCalories;
-  const tolerance = macros.calories * 0.10;
-
-  if (calGap > tolerance) {
-    const currentDayCarbs = mealItems.reduce((s, its) => s + sumCarbs(its), 0);
-    const carbsHeadroom   = macros.carbs - currentDayCarbs;
-    if (carbsHeadroom > 0) {
-      const extraCalPerMeal   = calGap / mealCount;
-      const carbsPerMealExtra = carbsHeadroom / mealCount;
-      for (const its of mealItems) {
-        const starchItem = its.find(x => x.food.tag === 'starch');
-        if (starchItem && starchItem.food.calories > 0 && starchItem.food.carbs > 0) {
-          const gramsByCal  = Math.round((extraCalPerMeal   / starchItem.food.calories) * 100);
-          const gramsByCarb = Math.round((carbsPerMealExtra / starchItem.food.carbs)    * 100);
-          const extraGrams  = Math.min(gramsByCal, gramsByCarb);
-          if (extraGrams >= 5) starchItem.grams += extraGrams;
+    if (isWhey(meat)) {
+      const wheyG = Math.max(30, Math.min(100, Math.round((perMealPro / meat.protein) * 100)));
+      mealItems[i].push({ food: meat, grams: wheyG });
+      used.add(meat.name);
+      const rem = perMealPro - (meat.protein * wheyG / 100);
+      if (rem >= 5) {
+        const real = pickFood(i, 'protein', { ...protOpts, noWhey: true });
+        if (real && real.protein > 0) {
+          mealItems[i].push({ food: real, grams: Math.round((rem / real.protein) * 100) });
+          used.add(real.name);
         }
       }
-    }
-  } else if (calGap < -tolerance) {
-    const scale = macros.calories / currentDayCalories;
-    if (scale < 0.90) {
-      for (const its of mealItems) {
-        for (const item of its) {
-          if (item.food.tag === 'starch') item.grams = Math.round(item.grams * scale);
-        }
-      }
-      for (let m = 0; m < mealItems.length; m++) {
-        mealItems[m] = mealItems[m].filter(x => !(x.food.tag === 'starch' && x.grams <= 0));
-      }
+    } else {
+      mealItems[i].push({ food: meat, grams: Math.round((perMealPro / meat.protein) * 100) });
+      used.add(meat.name);
     }
   }
 
-  // ── Bước E: Micro-Tuning Loop — khóa sai số tất cả macro + cal ≤ 5% ─────────
-  const MICRO_TOL = 0.05;
-  const MAX_ITER  = 100;
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Bước 3: TINH BỘT — grams = perMealCarbs / food.carbs × 100
+  //   grams < 50g → bỏ bữa đó, dồn carbs sang bữa chính cuối cùng
+  // ─────────────────────────────────────────────────────────────────────────────
+  const netCarbs     = Math.max(0, macros.carbs - vfCar);
+  const perMealCarbs = mealCount > 0 ? netCarbs / mealCount : 0;
 
   const lastMainIdx = (() => {
     for (let i = mealCount - 1; i >= 0; i--) {
@@ -431,42 +357,67 @@ function runCoreEngine(
     return mealCount - 1;
   })();
 
-  const dayTotals = () => {
-    let cal = 0, pro = 0, fatD = 0, car = 0;
-    for (const its of mealItems) {
-      cal  += sumCal(its);
-      pro  += sumProtein(its);
-      fatD += sumFat(its);
-      car  += sumCarbs(its);
-    }
-    return { cal, pro, fat: fatD, car };
-  };
+  let carbsCarry = 0;
 
-  function ensureTagItem(mealIdx: number, tag: string, fallback: FoodItem | null): { food: FoodItem; grams: number } | null {
-    const its = mealItems[mealIdx];
-    const hit = its.find(x => x.food.tag === tag);
-    if (hit) return hit;
-    if (!fallback) return null;
-    const newItem = { food: fallback, grams: 0 };
-    its.push(newItem);
-    return newItem;
+  for (let i = 0; i < mealCount; i++) {
+    const isLast    = i === lastMainIdx;
+    const carbsHere = isLast ? perMealCarbs + carbsCarry : perMealCarbs;
+    if (carbsHere <= 0) continue;
+
+    const starch = pickFood(i, 'starch');
+    if (!starch || starch.carbs <= 0) {
+      if (!isLast) carbsCarry += carbsHere;
+      continue;
+    }
+
+    const g = Math.round((carbsHere / starch.carbs) * 100);
+    if (!isLast && g < 50) {
+      carbsCarry += carbsHere;
+      continue;
+    }
+    if (g > 0) {
+      mealItems[i].push({ food: starch, grams: g });
+      used.add(starch.name);
+    }
   }
 
-  const proteinFallback = (() => {
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Bước 4: FAT — bù dầu ăn, chia đều các bữa
+  // ─────────────────────────────────────────────────────────────────────────────
+  const oilFood = FOODS.find(f => f.name === 'Dầu ăn (Chung)')
+    ?? FOODS.find(f => f.tag === 'fat' && f.fat >= 80 && f.calories > 0);
+
+  {
+    const { fat: currentFat } = dayMacro();
+    const fatGap = macros.fat - currentFat;
+    if (fatGap > 3 && oilFood && oilFood.fat > 0) {
+      const perMealOilG = Math.round((fatGap / oilFood.fat * 100) / mealCount);
+      if (perMealOilG >= 1) {
+        for (let i = 0; i < mealCount; i++) {
+          mealItems[i].push({ food: oilFood, grams: perMealOilG });
+        }
+      }
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Bước 5: Micro-Tuning Loop — sai số ≤ 5% tại bữa chính cuối cùng
+  // ─────────────────────────────────────────────────────────────────────────────
+  const protFB = (() => {
     const names = nameLists[`meal_${lastMainIdx + 1}`] ?? [];
     return names.map(n => findExactFood(n))
       .find((f): f is FoodItem =>
         f !== null && f.tag === 'protein' && !isWhey(f) &&
-        (!needsLeanProtein || f.fat <= LEAN_FAT_CEILING)
+        (!needsLean || f.fat <= LEAN_CEIL)
       )
       ?? FOODS.find(f =>
         f.tag === 'protein' && !isWhey(f) && f.protein > 20 &&
-        (!needsLeanProtein || f.fat <= LEAN_FAT_CEILING)
+        (!needsLean || f.fat <= LEAN_CEIL)
       )
       ?? null;
   })();
 
-  const starchFallback = (() => {
+  const starchFB = (() => {
     const names = nameLists[`meal_${lastMainIdx + 1}`] ?? [];
     return names.map(n => findExactFood(n))
       .find((f): f is FoodItem => f !== null && f.tag === 'starch')
@@ -474,34 +425,38 @@ function runCoreEngine(
       ?? null;
   })();
 
-  for (let iter = 0; iter < MAX_ITER; iter++) {
-    const { cal, pro, fat: fatNow, car } = dayTotals();
-    const calErr = macros.calories > 0 ? Math.abs((cal    - macros.calories) / macros.calories) : 0;
-    const proErr = macros.protein  > 0 ? Math.abs((pro    - macros.protein)  / macros.protein)  : 0;
-    const fatErr = macros.fat      > 0 ? Math.abs((fatNow - macros.fat)      / macros.fat)      : 0;
-    const carErr = macros.carbs    > 0 ? Math.abs((car    - macros.carbs)    / macros.carbs)    : 0;
+  function getOrAdd(
+    mealIdx: number,
+    tag: string,
+    fallback: FoodItem | null
+  ): { food: FoodItem; grams: number } | null {
+    const hit = mealItems[mealIdx].find(x => x.food.tag === tag);
+    if (hit) return hit;
+    if (!fallback) return null;
+    const ni = { food: fallback, grams: 0 };
+    mealItems[mealIdx].push(ni);
+    return ni;
+  }
 
-    if (calErr <= MICRO_TOL && proErr <= MICRO_TOL && fatErr <= MICRO_TOL && carErr <= MICRO_TOL) break;
+  for (let iter = 0; iter < 100; iter++) {
+    const { cal, pro, fat, car } = dayMacro();
+    const calErr = macros.calories > 0 ? Math.abs((cal - macros.calories) / macros.calories) : 0;
+    const proErr = macros.protein  > 0 ? Math.abs((pro - macros.protein)  / macros.protein)  : 0;
+    const fatErr = macros.fat      > 0 ? Math.abs((fat - macros.fat)      / macros.fat)      : 0;
+    const carErr = macros.carbs    > 0 ? Math.abs((car - macros.carbs)    / macros.carbs)    : 0;
+    if (calErr <= 0.05 && proErr <= 0.05 && fatErr <= 0.05 && carErr <= 0.05) break;
 
-    if (proErr > MICRO_TOL) {
-      const item = ensureTagItem(lastMainIdx, 'protein', proteinFallback);
-      if (item && item.food.protein > 0) {
-        item.grams = Math.max(0, item.grams + (pro < macros.protein ? 5 : -5));
-      }
+    if (proErr > 0.05) {
+      const it = getOrAdd(lastMainIdx, 'protein', protFB);
+      if (it && it.food.protein > 0) it.grams = Math.max(0, it.grams + (pro < macros.protein ? 5 : -5));
     }
-
-    if (carErr > MICRO_TOL) {
-      const item = ensureTagItem(lastMainIdx, 'starch', starchFallback);
-      if (item && item.food.carbs > 0) {
-        item.grams = Math.max(0, item.grams + (car < macros.carbs ? 5 : -5));
-      }
+    if (carErr > 0.05) {
+      const it = getOrAdd(lastMainIdx, 'starch', starchFB);
+      if (it && it.food.carbs > 0) it.grams = Math.max(0, it.grams + (car < macros.carbs ? 5 : -5));
     }
-
-    if (fatErr > MICRO_TOL && oilFood && oilFood.fat > 0) {
-      const item = ensureTagItem(lastMainIdx, 'fat', oilFood);
-      if (item) {
-        item.grams = Math.max(0, item.grams + (fatNow < macros.fat ? 2 : -1));
-      }
+    if (fatErr > 0.05 && oilFood && oilFood.fat > 0) {
+      const it = getOrAdd(lastMainIdx, 'fat', oilFood);
+      if (it) it.grams = Math.max(0, it.grams + (fat < macros.fat ? 2 : -1));
     }
   }
 
