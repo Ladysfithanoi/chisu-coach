@@ -248,13 +248,10 @@ function runCoreEngine(
       .slice(0, 2);
   }
 
-  const perMealProtein = macros.protein / mealCount;
-  const perMealFiber   = (macros.calories / 1000 * 14) / mealCount;
+  const perMealFiber = (macros.calories / 1000 * 14) / mealCount;
   const oilFood = FOODS.find(f => f.name === 'Dầu ăn (Chung)');
 
   // ── Global Calorie Cap helpers ───────────────────────────────────────────────
-  // Hard ceiling = target + 10%.  capGrams() shaves desired grams so the running
-  // total never crosses this line.  Returns 0 when budget is already exhausted.
   const calCap = macros.calories * 1.10;
 
   function sumCalItems(its: Array<{ food: FoodItem; grams: number }>): number {
@@ -270,18 +267,17 @@ function runCoreEngine(
     return Math.min(desired, Math.floor((budget / food.calories) * 100));
   }
 
-  // ── Pass 1: VEG + PROTEIN per meal ──────────────────────────────────────────
+  // ── Sub-pass 1A: VEG — fiber-driven for all meals, collect day-level totals ──
+  // Must complete before protein step so totalVegProtein is known day-wide.
   const mealItems: Array<Array<{ food: FoodItem; grams: number }>> = [];
-  let totalVegCarbs = 0;
+  let totalVegCarbs   = 0;
+  let totalVegProtein = 0;
   const noWhey = (f: FoodItem) => !isWhey(f);
 
   for (let i = 0; i < mealCount; i++) {
     const items: Array<{ food: FoodItem; grams: number }> = [];
-
-    // Step A: VEG — grams driven by fiber target, capped by global ceiling
     const vegFoods = pickVegs(i);
     const fiberPerVeg = perMealFiber / Math.max(vegFoods.length, 1);
-    let mealVegProtein = 0;
 
     for (const food of vegFoods) {
       const fib = (food as FoodItem & { fiber?: number }).fiber ?? 0;
@@ -291,52 +287,52 @@ function runCoreEngine(
       const alreadyCal = sumCal(mealItems) + sumCalItems(items);
       const grams = capGrams(food, rawGrams, alreadyCal);
       used.add(food.name);
-      if (grams <= 0) continue; // calorie budget exhausted — skip this veg
+      if (grams <= 0) continue;
       items.push({ food, grams });
-      mealVegProtein += food.protein * grams / 100;
-      totalVegCarbs  += food.carbs   * grams / 100;
+      totalVegProtein += food.protein * grams / 100;
+      totalVegCarbs   += food.carbs   * grams / 100;
     }
+    mealItems.push(items);
+  }
 
-    // Step B: PROTEIN — deducts only veg protein from this meal, capped by global ceiling
-    const mealAnimalProteinNeeded = Math.max(perMealProtein - mealVegProtein, 0);
+  // ── Sub-pass 1B: PROTEIN — day-level deduction, distributed evenly per meal ──
+  // totalAnimalProteinNeeded = targetProtein − totalVegProtein  (e.g. 135 − 15 = 120g)
+  // The meat/fish phase runs UNCONDITIONALLY — veg protein can never block it.
+  const totalAnimalProteinNeeded = Math.max(macros.protein - totalVegProtein, 0);
+  const perMealAnimalProtein     = totalAnimalProteinNeeded / mealCount;
+
+  for (let i = 0; i < mealCount; i++) {
+    const items = mealItems[i]; // same array reference — pushes mutate mealItems[i] directly
     const wheyAllowed = mealCount < 3 ? i === 0 : i !== mealCount - 1;
+    const proteinFood = pickFood(i, 'protein', wheyAllowed ? undefined : noWhey);
 
-    if (mealAnimalProteinNeeded >= 1) {
-      const proteinFood = pickFood(i, 'protein', wheyAllowed ? undefined : noWhey);
+    if (proteinFood) {
+      const rawTargetGrams = proteinFood.protein > 0
+        ? Math.round(Math.max(50, Math.min(350, (perMealAnimalProtein / proteinFood.protein) * 100)))
+        : 50;
+      // sumCal(mealItems) = all veg + proteins already added to meals 0..i-1
+      const targetGrams = Math.max(capGrams(proteinFood, rawTargetGrams, sumCal(mealItems)), 50);
 
-      if (proteinFood) {
-        const rawTargetGrams = proteinFood.protein > 0
-          ? Math.round(Math.max(50, Math.min(350, (mealAnimalProteinNeeded / proteinFood.protein) * 100)))
-          : 100;
-        const calBeforeProtein = sumCal(mealItems) + sumCalItems(items);
-        // Protein is never sacrificed by the calorie cap — minimum 50g guaranteed.
-        const targetGrams = Math.max(capGrams(proteinFood, rawTargetGrams, calBeforeProtein), 50);
-
-        if (isWhey(proteinFood) && targetGrams > 100) {
-          items.push({ food: proteinFood, grams: 100 });
-          used.add(proteinFood.name);
-          const wheyProtein = proteinFood.protein;
-          const deficit = mealAnimalProteinNeeded - wheyProtein;
-          if (deficit >= 5) {
-            const realFood = pickFood(i, 'protein', noWhey);
-            if (realFood) {
-              const calAfterWhey = sumCal(mealItems) + sumCalItems(items);
-              const rawRealGrams = Math.round(Math.max(50, Math.min(350, (deficit / realFood.protein) * 100)));
-              const realGrams = capGrams(realFood, rawRealGrams, calAfterWhey);
-              if (realGrams > 0) {
-                items.push({ food: realFood, grams: realGrams });
-                used.add(realFood.name);
-              }
+      if (isWhey(proteinFood) && targetGrams > 100) {
+        items.push({ food: proteinFood, grams: 100 });
+        used.add(proteinFood.name);
+        const deficit = perMealAnimalProtein - proteinFood.protein;
+        if (deficit >= 5) {
+          const realFood = pickFood(i, 'protein', noWhey);
+          if (realFood) {
+            const rawRealGrams = Math.round(Math.max(50, Math.min(350, (deficit / realFood.protein) * 100)));
+            const realGrams = capGrams(realFood, rawRealGrams, sumCal(mealItems));
+            if (realGrams > 0) {
+              items.push({ food: realFood, grams: realGrams });
+              used.add(realFood.name);
             }
           }
-        } else {
-          items.push({ food: proteinFood, grams: targetGrams });
-          used.add(proteinFood.name);
         }
+      } else {
+        items.push({ food: proteinFood, grams: targetGrams });
+        used.add(proteinFood.name);
       }
     }
-
-    mealItems.push(items);
   }
 
   // ── Pass 2: STARCH — fill remaining carb budget (day-level), dynamic meal count ─
