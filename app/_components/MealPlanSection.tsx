@@ -750,6 +750,9 @@ export default function MealPlanSection({
   const hasMealData = (aiMeals && aiMeals.length > 0) || manualFoods.length > 0;
   const today = new Date().toLocaleDateString("vi-VN");
 
+  const caloriesPerMeal = liveDer / mealCount;
+  const mealFeasible = caloriesPerMeal >= 350;
+
   return (
     <div id="meal-plan-section" className="mt-6 space-y-4">
       {/* ── Tab container ── */}
@@ -802,9 +805,24 @@ export default function MealPlanSection({
                 </div>
               </div>
 
-              {/* Generate button — disabled during request AND during cooldown */}
+              {/* Meal feasibility warning — shown when calories/meal < 350 */}
+              {!mealFeasible && (
+                <div
+                  className="rounded-xl px-4 py-3 text-sm"
+                  style={{
+                    background: "rgba(245,158,11,0.08)",
+                    border: "1px solid rgba(245,158,11,0.35)",
+                    color: "#92400e",
+                    lineHeight: 1.55,
+                  }}
+                >
+                  ⚠️ Calories mục tiêu của khách hàng hiện tại quá thấp ({Math.round(liveDer)} kcal). Việc chia thành {mealCount} bữa sẽ làm lượng năng lượng và lượng tinh bột mỗi bữa bị bóp quá nhỏ, không khả thi để lên thực đơn thô thực tế. Khuyến nghị Coach nên thu gọn lại thành chế độ 2 bữa hoặc 3 bữa để đảm bảo hiệu quả dinh dưỡng!
+                </div>
+              )}
+
+              {/* Generate button — disabled during request, cooldown, or infeasible meal split */}
               {(() => {
-                const blocked = aiLoading || aiCooldown > 0;
+                const blocked = aiLoading || aiCooldown > 0 || !mealFeasible;
                 return (
                   <button
                     type="button"
