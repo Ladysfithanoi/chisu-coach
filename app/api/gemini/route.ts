@@ -82,38 +82,13 @@ function classifyFood(food: FoodItem): FoodCategory {
   return 'dish';
 }
 
-// ─── Fuzzy Food Name Match ────────────────────────────────────────────────────
+// ─── Exact Food Name Match ────────────────────────────────────────────────────
+// AI is given the exact DB names and must return them verbatim.
+// Only a normalised exact match is accepted — no fuzzy fallback.
 
-function findBestMatchingFood(query: string): FoodItem | null {
-  const q = query.toLowerCase().trim();
-
-  const exact = FOODS.find(f => f.name.toLowerCase() === q);
-  if (exact) return exact;
-
-  const containsFull = FOODS.filter(f => f.name.toLowerCase().includes(q));
-  if (containsFull.length === 1) return containsFull[0];
-  if (containsFull.length > 1)
-    return containsFull.sort((a, b) => a.name.length - b.name.length)[0];
-
-  const words = q.split(/\s+/).filter(w => w.length > 1);
-  if (words.length >= 2) {
-    const prefix = words.slice(0, 2).join(" ");
-    const prefixMatch = FOODS.filter(f => f.name.toLowerCase().includes(prefix));
-    if (prefixMatch.length > 0)
-      return prefixMatch.sort((a, b) => a.name.length - b.name.length)[0];
-  }
-
-  const sigWords = words.filter(w => w.length > 2);
-  if (sigWords.length > 0) {
-    const allWords = FOODS.filter(f => {
-      const n = f.name.toLowerCase();
-      return sigWords.every(w => n.includes(w));
-    });
-    if (allWords.length > 0)
-      return allWords.sort((a, b) => a.name.length - b.name.length)[0];
-  }
-
-  return null;
+function findExactFood(name: string): FoodItem | null {
+  const q = name.trim().toLowerCase();
+  return FOODS.find(f => f.name.trim().toLowerCase() === q) ?? null;
 }
 
 // ─── Meal Time Labels ─────────────────────────────────────────────────────────
@@ -150,31 +125,30 @@ function buildNameOnlySystemInstruction(
     ? `\n4. SỞ THÍCH: ${prefLines.join(' | ')}`
     : '';
 
-  return `Bạn là AI gợi ý tên thực phẩm ĐƠN CHẤT cho thực đơn giảm cân Việt Nam. Nhiệm vụ DUY NHẤT: trả về TÊN thực phẩm thô — Backend tự tính 100% số gram và macro, AI KHÔNG được đặt bất kỳ con số nào.
+  return `Mày là chuyên gia dinh dưỡng lên thực đơn giảm cân Việt Nam. Nhiệm vụ DUY NHẤT: trả về TÊN thực phẩm — Backend tự tính 100% số gram và macro, AI KHÔNG được đặt bất kỳ con số nào.
 
 OUTPUT BẮT BUỘC — JSON thuần, không markdown, không giải thích:
 {"meal_1":["tên1","tên2",...],"meal_2":[...],...,"meal_${mealCount}":[...]}
 
 ${mealCount} bữa lần lượt: ${labels.join(' | ')}
 
-LUẬT NGHIÊM CẤM (VI PHẠM = OUTPUT BỊ HỦY):
-- CHỈ ĐƯỢC chọn TÊN CÓ TRONG DANH SÁCH BÊN DƯỚI. Không được đặt tên khác.
-- CẤM TUYỆT ĐỐI mọi món phức tạp/hỗn hợp: Phở, Bún bò, Cơm tấm, Cơm chiên, Mì xào, Bánh cuốn, Bánh canh, Bún riêu, Gỏi cuốn, Chả giò, Bánh mì kẹp (Bánh mì gà xé / Bánh mì thịt / Bánh mì bò né...), Xôi xéo, Xôi thập cẩm, Cơm gà nướng, Cơm tấm sườn — những món này chứa hỗn hợp đạm + tinh bột + chất béo mà Backend không thể tách macro.
-- Mỗi bữa: ĐÚNG 1 protein + ĐÚNG 1 tinh bột + 1-2 rau xanh.
+LUẬT TUYỆT ĐỐI — VI PHẠM = OUTPUT BỊ HỦY HOÀN TOÀN:
+1. Mày CHỈ ĐƯỢC PHÉP sao chép chính xác từng chuỗi ký tự tên thực phẩm từ MENU bên dưới vào output. CẤM thêm, bớt, hoặc thay đổi dù chỉ một ký tự. Backend dùng exact-match để tìm kiếm — sai một chữ = không tìm được = bữa ăn rỗng.
+2. Mỗi bữa: ĐÚNG 1 tên từ nhóm PROTEIN + ĐÚNG 1 tên từ nhóm TINH BỘT + 1-2 tên từ nhóm RAU XANH.
+3. Không lặp cùng một tên thực phẩm giữa các bữa.
+4. Bữa Sáng ưu tiên: Cơm lứt, Khoai lang ruột cam (thường) chín.${prefBlock}
 
-QUY TẮC:
-1. Tên phải khớp CHÍNH XÁC với danh sách.
-2. Không lặp thực phẩm giữa các bữa.
-3. Bữa Sáng ưu tiên: Cơm lứt, Khoai lang ruột cam.${prefBlock}
+══════════════ MENU HỆ THỐNG — CHỈ ĐƯỢC CHỌN TỪ ĐÂY ══════════════
 
 RAU XANH (chọn 1-2/bữa):
-${vegNames.join(', ')}
+${vegNames.join('\n')}
 
-TINH BỘT SẠCH — carb thuần (chọn ĐÚNG 1/bữa):
-${starchNames.join(', ')}
+TINH BỘT SẠCH (chọn ĐÚNG 1/bữa):
+${starchNames.join('\n')}
 
-PROTEIN SẠCH — đạm thuần (chọn ĐÚNG 1/bữa):
-${proteinNames.join(', ')}`;
+PROTEIN SẠCH (chọn ĐÚNG 1/bữa):
+${proteinNames.join('\n')}
+══════════════════════════════════════════════════════════════════`;
 }
 
 // ─── User Prompt ─────────────────────────────────────────────────────────────
@@ -243,51 +217,35 @@ function runCoreEngine(
   const used = new Set<string>();
   const notUsed = (name: string) => !used.has(name);
 
+  // AI returns exact DB names — resolve with normalised exact match only, no fuzzy fallback.
+  // mustPass is the only optional filter (used to block Whey in final meals).
   function pickFood(
     mealIndex: number,
     category: FoodCategory,
-    fallbackFilter?: (f: FoodItem) => boolean,
     mustPass?: (f: FoodItem) => boolean
   ): FoodItem | null {
-    // Purity gate: starch must be carb-only; protein must be carb-free.
-    // This runs even on AI-suggested foods so a hallucinated "Bánh mì gà xé"
-    // (carbs 48, protein 18) cannot sneak through as a protein source.
     const pureGuard = category === 'starch'  ? isPureStarch
                     : category === 'protein' ? isPureProtein
                     : () => true;
-
     const names = nameLists[`meal_${mealIndex + 1}`] ?? [];
-    const fromAI = names
-      .map(n => findBestMatchingFood(n))
-      .filter((f): f is FoodItem =>
+    return names
+      .map(n => findExactFood(n))
+      .find((f): f is FoodItem =>
         f !== null &&
         !isComplexDish(f) &&
         classifyFood(f) === category &&
         pureGuard(f) &&
         notUsed(f.name) &&
         (!mustPass || mustPass(f))
-      )[0] ?? null;
-    if (fromAI) return fromAI;
-    if (!fallbackFilter && !mustPass) return null;
-    return (
-      FOODS.find(f => !isComplexDish(f) && classifyFood(f) === category && pureGuard(f) && notUsed(f.name) && (!fallbackFilter || fallbackFilter(f)) && (!mustPass || mustPass(f))) ??
-      FOODS.find(f => !isComplexDish(f) && classifyFood(f) === category && pureGuard(f) && notUsed(f.name) && (!mustPass || mustPass(f))) ??
-      null
-    );
+      ) ?? null;
   }
 
   function pickVegs(mealIndex: number): FoodItem[] {
     const names = nameLists[`meal_${mealIndex + 1}`] ?? [];
-    const fromAI = names
-      .map(n => findBestMatchingFood(n))
-      .filter((f): f is FoodItem => f !== null && isVegetable(f) && !isComplexDish(f) && notUsed(f.name));
-    if (fromAI.length > 0) return fromAI.slice(0, 2);
-    const fb = FOODS.find(f =>
-      isVegetable(f) &&
-      notUsed(f.name) &&
-      typeof (f as FoodItem & { fiber?: number }).fiber === 'number'
-    );
-    return fb ? [fb] : [];
+    return names
+      .map(n => findExactFood(n))
+      .filter((f): f is FoodItem => f !== null && isVegetable(f) && !isComplexDish(f) && notUsed(f.name))
+      .slice(0, 2);
   }
 
   const perMealProtein = macros.protein / mealCount;
@@ -344,9 +302,7 @@ function runCoreEngine(
     const wheyAllowed = mealCount < 3 ? i === 0 : i !== mealCount - 1;
 
     if (mealAnimalProteinNeeded >= 1) {
-      const proteinFood = wheyAllowed
-        ? pickFood(i, 'protein', f => f.protein > 18 && f.fat < 8)
-        : pickFood(i, 'protein', f => !isWhey(f) && f.protein > 18 && f.fat < 8, noWhey);
+      const proteinFood = pickFood(i, 'protein', wheyAllowed ? undefined : noWhey);
 
       if (proteinFood) {
         const rawTargetGrams = proteinFood.protein > 0
@@ -354,16 +310,15 @@ function runCoreEngine(
           : 100;
         const calBeforeProtein = sumCal(mealItems) + sumCalItems(items);
         // Protein is never sacrificed by the calorie cap — minimum 50g guaranteed.
-        // Cap applies only to starch (Pass 2) and oil (Pass 3).
         const targetGrams = Math.max(capGrams(proteinFood, rawTargetGrams, calBeforeProtein), 50);
 
         if (isWhey(proteinFood) && targetGrams > 100) {
           items.push({ food: proteinFood, grams: 100 });
           used.add(proteinFood.name);
-          const wheyProtein = proteinFood.protein; // per 100g = actual at 100g serving
+          const wheyProtein = proteinFood.protein;
           const deficit = mealAnimalProteinNeeded - wheyProtein;
           if (deficit >= 5) {
-            const realFood = pickFood(i, 'protein', f => !isWhey(f) && f.protein > 18 && f.fat < 8, noWhey);
+            const realFood = pickFood(i, 'protein', noWhey);
             if (realFood) {
               const calAfterWhey = sumCal(mealItems) + sumCalItems(items);
               const rawRealGrams = Math.round(Math.max(50, Math.min(350, (deficit / realFood.protein) * 100)));
@@ -397,12 +352,7 @@ function runCoreEngine(
     const carbPerStarchMeal = remainingCarbs / starchMealCount;
 
     for (let i = 0; i < starchMealCount; i++) {
-      const starchFood =
-        pickFood(i, 'starch') ??
-        FOODS.find(f => f.name.includes('Khoai lang') && notUsed(f.name)) ??
-        FOODS.find(f => f.name.includes('Gạo lứt')   && notUsed(f.name)) ??
-        FOODS.find(f => classifyFood(f) === 'starch'  && notUsed(f.name) && f.calories > 0) ??
-        null;
+      const starchFood = pickFood(i, 'starch');
 
       if (starchFood) {
         // Mixed-macro starch (Xôi, Bánh mì enriched, etc.) gets a tighter ceiling
