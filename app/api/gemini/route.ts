@@ -210,19 +210,20 @@ interface MealSolution {
   items: Array<{ food: FoodItem; grams: number }>;
 }
 
-// 3-Pass Solver — Fiber + Protein are hard per-meal targets; Starch and Oil balance
-// at the day level. No per-meal calorie cap — inter-meal calorie variation is accepted.
+// 3-Pass Solver — hard calorie ceiling enforced at every gram-allocation step.
+//
+//  Global cap: targetCalories × 1.10 — NO food gram can push total above this.
+//  Mixed-macro starch (protein > 5g or fat > 10g per 100g): max 150g to prevent
+//  inflated portions from single-handedly blowing the day budget.
 //
 //  Pass 1 VEG + PROTEIN (per meal):
-//    Step A: grams = (perMealFiber / veg.fiber) × 100  → locked
-//    Step B: mealAnimalProtein = perMealProtein − vegProtein  → locked
-//            (starch not yet computed — only veg protein is deducted)
+//    Step A: grams = (perMealFiber / veg.fiber) × 100, clamped [80,200], then cap
+//    Step B: mealAnimalProtein = perMealProtein − vegProtein, capped by remaining budget
 //  Pass 2 STARCH (day-level carb balancer):
 //    remainingCarbs = targetCarbs − totalVegCarbs
-//    dynamic starchMealCount (≥ 20g/meal); first starchMealCount meals receive starch
+//    dynamic starchMealCount (≥ 20g carbs/meal); grams capped by remaining budget
 //  Pass 3 OIL (day-level calorie top-up):
-//    remainingCalories = targetCalories − (veg+protein+starch totals)
-//    divided evenly across all meals, capped by fat budget
+//    remainingCalories = targetCalories − currentTotal  → fills gap, never overshoots
 function runCoreEngine(
   nameLists: Record<string, string[]>,
   macros: { calories: number; protein: number; fat: number; carbs: number },
@@ -269,9 +270,25 @@ function runCoreEngine(
   const perMealFiber   = (macros.calories / 1000 * 14) / mealCount;
   const oilFood = FOODS.find(f => f.name === 'Dầu ăn (Chung)');
 
+  // ── Global Calorie Cap helpers ───────────────────────────────────────────────
+  // Hard ceiling = target + 10%.  capGrams() shaves desired grams so the running
+  // total never crosses this line.  Returns 0 when budget is already exhausted.
+  const calCap = macros.calories * 1.10;
+
+  function sumCalItems(its: Array<{ food: FoodItem; grams: number }>): number {
+    return its.reduce((s, { food, grams }) => s + food.calories * grams / 100, 0);
+  }
+  function sumCal(meals: Array<Array<{ food: FoodItem; grams: number }>>): number {
+    return meals.reduce((total, its) => total + sumCalItems(its), 0);
+  }
+  function capGrams(food: FoodItem, desired: number, alreadyCal: number): number {
+    if (food.calories <= 0 || desired <= 0) return desired;
+    const budget = calCap - alreadyCal;
+    if (budget <= 0) return 0;
+    return Math.min(desired, Math.floor((budget / food.calories) * 100));
+  }
+
   // ── Pass 1: VEG + PROTEIN per meal ──────────────────────────────────────────
-  // Step A locks veg for fiber; Step B locks meat/fish for protein.
-  // No calorie cap on individual meals — calories co-giãn tự do ở bước này.
   const mealItems: Array<Array<{ food: FoodItem; grams: number }>> = [];
   let totalVegCarbs = 0;
   const noWhey = (f: FoodItem) => !isWhey(f);
@@ -279,23 +296,26 @@ function runCoreEngine(
   for (let i = 0; i < mealCount; i++) {
     const items: Array<{ food: FoodItem; grams: number }> = [];
 
-    // Step A: VEG — lock grams to hit perMealFiber
+    // Step A: VEG — grams driven by fiber target, capped by global ceiling
     const vegFoods = pickVegs(i);
     const fiberPerVeg = perMealFiber / Math.max(vegFoods.length, 1);
     let mealVegProtein = 0;
 
     for (const food of vegFoods) {
       const fib = (food as FoodItem & { fiber?: number }).fiber ?? 0;
-      const grams = fib > 0
+      const rawGrams = fib > 0
         ? Math.round(Math.max(80, Math.min(200, (fiberPerVeg / fib) * 100)))
         : 100;
+      const alreadyCal = sumCal(mealItems) + sumCalItems(items);
+      const grams = capGrams(food, rawGrams, alreadyCal);
+      used.add(food.name);
+      if (grams <= 0) continue; // calorie budget exhausted — skip this veg
       items.push({ food, grams });
       mealVegProtein += food.protein * grams / 100;
       totalVegCarbs  += food.carbs   * grams / 100;
-      used.add(food.name);
     }
 
-    // Step B: PROTEIN — bắt buộc, chỉ khấu trừ protein từ rau của bữa này
+    // Step B: PROTEIN — deducts only veg protein from this meal, capped by global ceiling
     const mealAnimalProteinNeeded = Math.max(perMealProtein - mealVegProtein, 0);
     const wheyAllowed = mealCount < 3 ? i === 0 : i !== mealCount - 1;
 
@@ -305,20 +325,29 @@ function runCoreEngine(
         : pickFood(i, 'protein', f => !isWhey(f) && f.protein > 18 && f.fat < 8, noWhey);
 
       if (proteinFood) {
-        const targetGrams = proteinFood.protein > 0
+        const rawTargetGrams = proteinFood.protein > 0
           ? Math.round(Math.max(50, Math.min(350, (mealAnimalProteinNeeded / proteinFood.protein) * 100)))
           : 100;
+        const calBeforeProtein = sumCal(mealItems) + sumCalItems(items);
+        const targetGrams = capGrams(proteinFood, rawTargetGrams, calBeforeProtein);
 
-        if (isWhey(proteinFood) && targetGrams > 100) {
+        if (targetGrams <= 0) {
+          // calorie budget fully exhausted — accept missing protein this meal
+        } else if (isWhey(proteinFood) && targetGrams > 100) {
           items.push({ food: proteinFood, grams: 100 });
           used.add(proteinFood.name);
-          const deficit = mealAnimalProteinNeeded - proteinFood.protein;
+          const wheyProtein = proteinFood.protein; // per 100g = actual at 100g serving
+          const deficit = mealAnimalProteinNeeded - wheyProtein;
           if (deficit >= 5) {
             const realFood = pickFood(i, 'protein', f => !isWhey(f) && f.protein > 18 && f.fat < 8, noWhey);
             if (realFood) {
-              const realGrams = Math.round(Math.max(50, Math.min(350, (deficit / realFood.protein) * 100)));
-              items.push({ food: realFood, grams: realGrams });
-              used.add(realFood.name);
+              const calAfterWhey = sumCal(mealItems) + sumCalItems(items);
+              const rawRealGrams = Math.round(Math.max(50, Math.min(350, (deficit / realFood.protein) * 100)));
+              const realGrams = capGrams(realFood, rawRealGrams, calAfterWhey);
+              if (realGrams > 0) {
+                items.push({ food: realFood, grams: realGrams });
+                used.add(realFood.name);
+              }
             }
           }
         } else {
@@ -332,8 +361,8 @@ function runCoreEngine(
   }
 
   // ── Pass 2: STARCH — fill remaining carb budget (day-level), dynamic meal count ─
-  // remainingCarbs = targetCarbs − totalVegCarbs already locked in Pass 1.
-  // Reduces starchMealCount until each starch meal gets ≥ 20g carbs.
+  // Mixed-macro starch (protein > 5g or fat > 10g per 100g) is hard-capped at 150g
+  // to prevent the algorithm from inflating one food to 300g+ and spiking total calories.
   const remainingCarbs = macros.carbs - totalVegCarbs;
 
   if (remainingCarbs >= 20) {
@@ -352,22 +381,26 @@ function runCoreEngine(
         null;
 
       if (starchFood) {
-        const starchGrams = starchFood.carbs > 0
-          ? Math.round(Math.max(30, Math.min(400, (carbPerStarchMeal / starchFood.carbs) * 100)))
+        // Mixed-macro starch (Xôi, Bánh mì enriched, etc.) gets a tighter ceiling
+        const maxStarchGrams = (starchFood.protein > 5 || starchFood.fat > 10) ? 150 : 400;
+        const rawStarchGrams = starchFood.carbs > 0
+          ? Math.round(Math.max(30, Math.min(maxStarchGrams, (carbPerStarchMeal / starchFood.carbs) * 100)))
           : 100;
-        mealItems[i].push({ food: starchFood, grams: starchGrams });
-        used.add(starchFood.name);
+        const starchGrams = capGrams(starchFood, rawStarchGrams, sumCal(mealItems));
+        if (starchGrams > 0) {
+          mealItems[i].push({ food: starchFood, grams: starchGrams });
+          used.add(starchFood.name);
+        }
       }
     }
   }
 
   // ── Pass 3: OIL — fill day-level calorie gap evenly, capped by fat budget ────
+  // Uses macros.calories (not calCap) so oil only fills the actual target gap.
   if (oilFood) {
-    const currentTotalCalories = mealItems.reduce(
-      (sum, items) => sum + items.reduce((s, { food, grams }) => s + food.calories * grams / 100, 0), 0
-    );
+    const currentTotalCalories = sumCal(mealItems);
     const currentTotalFat = mealItems.reduce(
-      (sum, items) => sum + items.reduce((s, { food, grams }) => s + food.fat * grams / 100, 0), 0
+      (sum, its) => sum + its.reduce((s, { food, grams }) => s + food.fat * grams / 100, 0), 0
     );
     const remainingCalories  = macros.calories - currentTotalCalories;
     const remainingFatBudget = macros.fat - currentTotalFat;
