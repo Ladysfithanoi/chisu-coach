@@ -195,20 +195,21 @@ interface MealSolution {
   items: Array<{ food: FoodItem; grams: number }>;
 }
 
-// 3-Pass Solver — hard calorie ceiling enforced at every gram-allocation step.
+// ── Core Diet Engine — 3-pass mechanical solver ───────────────────────────────
 //
-//  Global cap: targetCalories × 1.10 — NO food gram can push total above this.
-//  Mixed-macro starch (protein > 5g or fat > 10g per 100g): max 150g to prevent
-//  inflated portions from single-handedly blowing the day budget.
+//  Sub-pass 1A  VEG   : grams = (perMealFiber / fiber) × 100  → clamped [80,200]
+//                       Collects totalVegProtein + totalVegCarbs across all meals.
 //
-//  Pass 1 VEG + PROTEIN (per meal):
-//    Step A: grams = (perMealFiber / veg.fiber) × 100, clamped [80,200], then cap
-//    Step B: mealAnimalProtein = perMealProtein − vegProtein, capped by remaining budget
-//  Pass 2 STARCH (day-level carb balancer):
-//    remainingCarbs = targetCarbs − totalVegCarbs
-//    dynamic starchMealCount (≥ 20g carbs/meal); grams capped by remaining budget
-//  Pass 3 OIL (day-level calorie top-up):
-//    remainingCalories = targetCalories − currentTotal  → fills gap, never overshoots
+//  Sub-pass 1B  MEAT  : Pure mechanical formula — NO calorie cap, NO clamps.
+//                       totalAnimalProtein = targetProtein − totalVegProtein
+//                       perMealAnimalProtein = totalAnimalProtein / mealCount
+//                       meatGrams = (perMealAnimalProtein / food.protein) × 100
+//                       Accept whatever gram value results (150g, 200g, 250g — all fine).
+//
+//  Pass 2       STARCH: remainingCarbs = targetCarbs − totalVegCarbs
+//                       Calorie cap applied here (not on protein).
+//
+//  Pass 3       OIL   : remainingCalories = targetCalories − currentTotal → gap fill.
 function runCoreEngine(
   nameLists: Record<string, string[]>,
   macros: { calories: number; protein: number; fat: number; carbs: number },
@@ -295,41 +296,35 @@ function runCoreEngine(
     mealItems.push(items);
   }
 
-  // ── Sub-pass 1B: PROTEIN — day-level deduction, distributed evenly per meal ──
-  // totalAnimalProteinNeeded = targetProtein − totalVegProtein  (e.g. 135 − 15 = 120g)
-  // The meat/fish phase runs UNCONDITIONALLY — veg protein can never block it.
+  // ── Sub-pass 1B: PROTEIN — pure mechanical formula, zero calorie interference ──
+  // meatGrams = (perMealAnimalProtein / food.protein) × 100
+  // No capGrams, no Math.max floor, no Math.min ceiling — accept whatever gram comes out.
   const totalAnimalProteinNeeded = Math.max(macros.protein - totalVegProtein, 0);
   const perMealAnimalProtein     = totalAnimalProteinNeeded / mealCount;
 
   for (let i = 0; i < mealCount; i++) {
-    const items = mealItems[i]; // same array reference — pushes mutate mealItems[i] directly
+    const items = mealItems[i];
     const wheyAllowed = mealCount < 3 ? i === 0 : i !== mealCount - 1;
     const proteinFood = pickFood(i, 'protein', wheyAllowed ? undefined : noWhey);
 
-    if (proteinFood) {
-      const rawTargetGrams = proteinFood.protein > 0
-        ? Math.round(Math.max(50, Math.min(350, (perMealAnimalProtein / proteinFood.protein) * 100)))
-        : 50;
-      // sumCal(mealItems) = all veg + proteins already added to meals 0..i-1
-      const targetGrams = Math.max(capGrams(proteinFood, rawTargetGrams, sumCal(mealItems)), 50);
+    if (proteinFood && proteinFood.protein > 0) {
+      const grams = Math.round((perMealAnimalProtein / proteinFood.protein) * 100);
 
-      if (isWhey(proteinFood) && targetGrams > 100) {
+      if (isWhey(proteinFood) && grams > 100) {
+        // Whey capped at 100g/serving; supplement deficit with real food
         items.push({ food: proteinFood, grams: 100 });
         used.add(proteinFood.name);
-        const deficit = perMealAnimalProtein - proteinFood.protein;
-        if (deficit >= 5) {
+        const remainingProtein = perMealAnimalProtein - (proteinFood.protein * 100 / 100);
+        if (remainingProtein >= 5) {
           const realFood = pickFood(i, 'protein', noWhey);
-          if (realFood) {
-            const rawRealGrams = Math.round(Math.max(50, Math.min(350, (deficit / realFood.protein) * 100)));
-            const realGrams = capGrams(realFood, rawRealGrams, sumCal(mealItems));
-            if (realGrams > 0) {
-              items.push({ food: realFood, grams: realGrams });
-              used.add(realFood.name);
-            }
+          if (realFood && realFood.protein > 0) {
+            const realGrams = Math.round((remainingProtein / realFood.protein) * 100);
+            items.push({ food: realFood, grams: realGrams });
+            used.add(realFood.name);
           }
         }
       } else {
-        items.push({ food: proteinFood, grams: targetGrams });
+        items.push({ food: proteinFood, grams });
         used.add(proteinFood.name);
       }
     }
