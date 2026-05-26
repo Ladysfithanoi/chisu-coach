@@ -318,12 +318,14 @@ function runCoreEngine(
   }
 
   // ── Bước D: Fat-first fill + calorie gap tighten — sai số < 10% ───────────
-  const sumCal   = (its: Array<{ food: FoodItem; grams: number }>) =>
+  const sumCal     = (its: Array<{ food: FoodItem; grams: number }>) =>
     its.reduce((s, { food, grams }) => s + food.calories * grams / 100, 0);
-  const sumFat   = (its: Array<{ food: FoodItem; grams: number }>) =>
+  const sumFat     = (its: Array<{ food: FoodItem; grams: number }>) =>
     its.reduce((s, { food, grams }) => s + food.fat      * grams / 100, 0);
-  const sumCarbs = (its: Array<{ food: FoodItem; grams: number }>) =>
+  const sumCarbs   = (its: Array<{ food: FoodItem; grams: number }>) =>
     its.reduce((s, { food, grams }) => s + food.carbs    * grams / 100, 0);
+  const sumProtein = (its: Array<{ food: FoodItem; grams: number }>) =>
+    its.reduce((s, { food, grams }) => s + food.protein  * grams / 100, 0);
 
   // D1: Fat-first — bù fat bằng dầu ăn (vô điều kiện, sai số < 3g fat)
   const oilFood = FOODS.find(f => f.name === 'Dầu ăn (Chung)')
@@ -375,6 +377,89 @@ function runCoreEngine(
         mealItems[m] = mealItems[m].filter(x => !(x.food.tag === 'starch' && x.grams <= 0));
       }
     }
+  }
+
+  // ── Bước E: Micro-Tuning Loop — khóa sai số tất cả macro + cal ≤ 5% ─────────
+  const MICRO_TOL = 0.05;
+  const MAX_ITER  = 100;
+
+  const lastMainIdx = (() => {
+    for (let i = mealCount - 1; i >= 0; i--) {
+      if (templates[i].type === 'main') return i;
+    }
+    return mealCount - 1;
+  })();
+
+  const dayTotals = () => {
+    let cal = 0, pro = 0, fatD = 0, car = 0;
+    for (const its of mealItems) {
+      cal  += sumCal(its);
+      pro  += sumProtein(its);
+      fatD += sumFat(its);
+      car  += sumCarbs(its);
+    }
+    return { cal, pro, fat: fatD, car };
+  };
+
+  function ensureTagItem(mealIdx: number, tag: string, fallback: FoodItem | null): { food: FoodItem; grams: number } | null {
+    const its = mealItems[mealIdx];
+    const hit = its.find(x => x.food.tag === tag);
+    if (hit) return hit;
+    if (!fallback) return null;
+    const newItem = { food: fallback, grams: 0 };
+    its.push(newItem);
+    return newItem;
+  }
+
+  const proteinFallback = (() => {
+    const names = nameLists[`meal_${lastMainIdx + 1}`] ?? [];
+    return names.map(n => findExactFood(n))
+      .find((f): f is FoodItem => f !== null && f.tag === 'protein' && !isWhey(f))
+      ?? FOODS.find(f => f.tag === 'protein' && !isWhey(f) && f.protein > 20)
+      ?? null;
+  })();
+
+  const starchFallback = (() => {
+    const names = nameLists[`meal_${lastMainIdx + 1}`] ?? [];
+    return names.map(n => findExactFood(n))
+      .find((f): f is FoodItem => f !== null && f.tag === 'starch')
+      ?? FOODS.find(f => f.tag === 'starch' && f.carbs > 20)
+      ?? null;
+  })();
+
+  for (let iter = 0; iter < MAX_ITER; iter++) {
+    const { cal, pro, fat: fatNow, car } = dayTotals();
+    const calErr = macros.calories > 0 ? Math.abs((cal    - macros.calories) / macros.calories) : 0;
+    const proErr = macros.protein  > 0 ? Math.abs((pro    - macros.protein)  / macros.protein)  : 0;
+    const fatErr = macros.fat      > 0 ? Math.abs((fatNow - macros.fat)      / macros.fat)      : 0;
+    const carErr = macros.carbs    > 0 ? Math.abs((car    - macros.carbs)    / macros.carbs)    : 0;
+
+    if (calErr <= MICRO_TOL && proErr <= MICRO_TOL && fatErr <= MICRO_TOL && carErr <= MICRO_TOL) break;
+
+    if (proErr > MICRO_TOL) {
+      const item = ensureTagItem(lastMainIdx, 'protein', proteinFallback);
+      if (item && item.food.protein > 0) {
+        item.grams = Math.max(0, item.grams + (pro < macros.protein ? 5 : -5));
+      }
+    }
+
+    if (carErr > MICRO_TOL) {
+      const item = ensureTagItem(lastMainIdx, 'starch', starchFallback);
+      if (item && item.food.carbs > 0) {
+        item.grams = Math.max(0, item.grams + (car < macros.carbs ? 5 : -5));
+      }
+    }
+
+    if (fatErr > MICRO_TOL && oilFood && oilFood.fat > 0) {
+      const item = ensureTagItem(lastMainIdx, 'fat', oilFood);
+      if (item) {
+        item.grams = Math.max(0, item.grams + (fatNow < macros.fat ? 2 : -1));
+      }
+    }
+  }
+
+  for (let m = 0; m < mealItems.length; m++) {
+    mealItems[m] = mealItems[m].filter(x => x.grams > 0);
   }
 
   return mealItems.map((items, i) => ({ mealName: getMealTimeLabel(i, mealCount), items }));
