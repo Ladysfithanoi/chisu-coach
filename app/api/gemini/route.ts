@@ -61,6 +61,16 @@ function isWhey(food: FoodItem): boolean {
   return food.name.toLowerCase().includes('whey');
 }
 
+// Pure whole-food guards — block mixed-macro foods from ever entering the solver.
+// A "Bánh mì gà xé" (carbs 48, protein 18) passes classifyFood as 'protein',
+// then solver inflates it to 240g+ = 870+ kcal in one meal. These filters cut it out.
+function isPureProtein(f: FoodItem): boolean {
+  return f.carbs < 5; // protein source must not carry significant carb load
+}
+function isPureStarch(f: FoodItem): boolean {
+  return f.protein < 5 && f.fat < 5; // starch source must be carb-dominant only
+}
+
 type FoodCategory = 'vegetable' | 'starch' | 'protein' | 'fat' | 'dish';
 
 function classifyFood(food: FoodItem): FoodCategory {
@@ -125,10 +135,11 @@ function buildNameOnlySystemInstruction(
   mealCount: number,
   preferences?: { likes?: string; dislikes?: string }
 ): string {
-  // Only show simple single-ingredient foods — no complex dishes
+  // Only pure single-ingredient foods — no complex/mixed-macro dishes.
+  // isPureStarch/isPureProtein filter ensures no mixed-macro food enters the AI list.
   const vegNames     = shuffleFoods(FOODS.filter(f => isVegetable(f))).map(f => f.name);
-  const starchNames  = shuffleFoods(FOODS.filter(f => !isComplexDish(f) && classifyFood(f) === 'starch')).map(f => f.name);
-  const proteinNames = shuffleFoods(FOODS.filter(f => !isComplexDish(f) && classifyFood(f) === 'protein')).map(f => f.name);
+  const starchNames  = shuffleFoods(FOODS.filter(f => !isComplexDish(f) && classifyFood(f) === 'starch' && isPureStarch(f))).map(f => f.name);
+  const proteinNames = shuffleFoods(FOODS.filter(f => !isComplexDish(f) && classifyFood(f) === 'protein' && isPureProtein(f))).map(f => f.name);
 
   const labels = MEAL_TIMES[mealCount] ?? Array.from({ length: mealCount }, (_, i) => `Bữa ${i + 1}`);
 
@@ -139,30 +150,30 @@ function buildNameOnlySystemInstruction(
     ? `\n4. SỞ THÍCH: ${prefLines.join(' | ')}`
     : '';
 
-  return `Bạn là AI gợi ý tên thực phẩm đơn cho thực đơn Việt Nam. Nhiệm vụ DUY NHẤT: trả về TÊN thực phẩm thô — Backend tự tính toán 100% số gram và macro theo công thức toán học, AI KHÔNG được tự ý đặt bất kỳ con số nào.
+  return `Bạn là AI gợi ý tên thực phẩm ĐƠN CHẤT cho thực đơn giảm cân Việt Nam. Nhiệm vụ DUY NHẤT: trả về TÊN thực phẩm thô — Backend tự tính 100% số gram và macro, AI KHÔNG được đặt bất kỳ con số nào.
 
 OUTPUT BẮT BUỘC — JSON thuần, không markdown, không giải thích:
 {"meal_1":["tên1","tên2",...],"meal_2":[...],...,"meal_${mealCount}":[...]}
 
 ${mealCount} bữa lần lượt: ${labels.join(' | ')}
 
-FOOD GUARD (VI PHẠM = OUTPUT BỊ HỦY HOÀN TOÀN):
-- CHỈ ĐƯỢC gợi ý thực phẩm thô/đơn: Ức gà, Cá lóc, Thịt bò nạc, Tôm sú, Đậu hũ, Trứng gà, Cơm lứt, Khoai lang...
-- CẤM TUYỆT ĐỐI: Phở bò, Bún bò, Cơm tấm sườn, Mì xào, Cơm chiên, Bún riêu, Bánh canh — những món này đã gộp đạm + tinh bột nên Backend không thể tách gram.
+LUẬT NGHIÊM CẤM (VI PHẠM = OUTPUT BỊ HỦY):
+- CHỈ ĐƯỢC chọn TÊN CÓ TRONG DANH SÁCH BÊN DƯỚI. Không được đặt tên khác.
+- CẤM TUYỆT ĐỐI mọi món phức tạp/hỗn hợp: Phở, Bún bò, Cơm tấm, Cơm chiên, Mì xào, Bánh cuốn, Bánh canh, Bún riêu, Gỏi cuốn, Chả giò, Bánh mì kẹp (Bánh mì gà xé / Bánh mì thịt / Bánh mì bò né...), Xôi xéo, Xôi thập cẩm, Cơm gà nướng, Cơm tấm sườn — những món này chứa hỗn hợp đạm + tinh bột + chất béo mà Backend không thể tách macro.
 - Mỗi bữa: ĐÚNG 1 protein + ĐÚNG 1 tinh bột + 1-2 rau xanh.
 
 QUY TẮC:
-1. Tên phải khớp CHÍNH XÁC với danh sách bên dưới.
+1. Tên phải khớp CHÍNH XÁC với danh sách.
 2. Không lặp thực phẩm giữa các bữa.
-3. Bữa Sáng ưu tiên: Bún gạo lứt, Yến mạch, Xôi gấc, Bánh mì nguyên cám.${prefBlock}
+3. Bữa Sáng ưu tiên: Cơm lứt, Khoai lang ruột cam.${prefBlock}
 
 RAU XANH (chọn 1-2/bữa):
 ${vegNames.join(', ')}
 
-TINH BỘT (chọn ĐÚNG 1/bữa):
+TINH BỘT SẠCH — carb thuần (chọn ĐÚNG 1/bữa):
 ${starchNames.join(', ')}
 
-PROTEIN (chọn ĐÚNG 1/bữa):
+PROTEIN SẠCH — đạm thuần (chọn ĐÚNG 1/bữa):
 ${proteinNames.join(', ')}`;
 }
 
@@ -238,16 +249,29 @@ function runCoreEngine(
     fallbackFilter?: (f: FoodItem) => boolean,
     mustPass?: (f: FoodItem) => boolean
   ): FoodItem | null {
+    // Purity gate: starch must be carb-only; protein must be carb-free.
+    // This runs even on AI-suggested foods so a hallucinated "Bánh mì gà xé"
+    // (carbs 48, protein 18) cannot sneak through as a protein source.
+    const pureGuard = category === 'starch'  ? isPureStarch
+                    : category === 'protein' ? isPureProtein
+                    : () => true;
+
     const names = nameLists[`meal_${mealIndex + 1}`] ?? [];
     const fromAI = names
       .map(n => findBestMatchingFood(n))
-      .filter((f): f is FoodItem => f !== null && !isComplexDish(f) && classifyFood(f) === category && notUsed(f.name) && (!mustPass || mustPass(f)))
-      [0] ?? null;
+      .filter((f): f is FoodItem =>
+        f !== null &&
+        !isComplexDish(f) &&
+        classifyFood(f) === category &&
+        pureGuard(f) &&
+        notUsed(f.name) &&
+        (!mustPass || mustPass(f))
+      )[0] ?? null;
     if (fromAI) return fromAI;
     if (!fallbackFilter && !mustPass) return null;
     return (
-      FOODS.find(f => !isComplexDish(f) && classifyFood(f) === category && notUsed(f.name) && (!fallbackFilter || fallbackFilter(f)) && (!mustPass || mustPass(f))) ??
-      FOODS.find(f => !isComplexDish(f) && classifyFood(f) === category && notUsed(f.name) && (!mustPass || mustPass(f))) ??
+      FOODS.find(f => !isComplexDish(f) && classifyFood(f) === category && pureGuard(f) && notUsed(f.name) && (!fallbackFilter || fallbackFilter(f)) && (!mustPass || mustPass(f))) ??
+      FOODS.find(f => !isComplexDish(f) && classifyFood(f) === category && pureGuard(f) && notUsed(f.name) && (!mustPass || mustPass(f))) ??
       null
     );
   }
@@ -329,11 +353,11 @@ function runCoreEngine(
           ? Math.round(Math.max(50, Math.min(350, (mealAnimalProteinNeeded / proteinFood.protein) * 100)))
           : 100;
         const calBeforeProtein = sumCal(mealItems) + sumCalItems(items);
-        const targetGrams = capGrams(proteinFood, rawTargetGrams, calBeforeProtein);
+        // Protein is never sacrificed by the calorie cap — minimum 50g guaranteed.
+        // Cap applies only to starch (Pass 2) and oil (Pass 3).
+        const targetGrams = Math.max(capGrams(proteinFood, rawTargetGrams, calBeforeProtein), 50);
 
-        if (targetGrams <= 0) {
-          // calorie budget fully exhausted — accept missing protein this meal
-        } else if (isWhey(proteinFood) && targetGrams > 100) {
+        if (isWhey(proteinFood) && targetGrams > 100) {
           items.push({ food: proteinFood, grams: 100 });
           used.add(proteinFood.name);
           const wheyProtein = proteinFood.protein; // per 100g = actual at 100g serving
