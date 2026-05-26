@@ -153,10 +153,9 @@ interface MealSolution {
 //  Bước 4 : currentMealCarbs = Σ carbs từ thịt+rau+quả
 //           neededStarchCarbs = (targetCarbs/meals) − currentMealCarbs
 //           TINH BỘT (f.tag==='starch') → starchGrams = round(needed/carbs×100), min 30g
-//  Bước 5 : Tổng calo ngày → so % thiếu Carbs vs Fat
-//           Carbs thiếu nhiều hơn → bù tinh bột phân bổ đều các bữa
-//           Fat thiếu nhiều hơn → bù Dầu ăn phân bổ đều các bữa
-//           Dư calo → scale down tinh bột, sai số mục tiêu < 2%
+//  Bước 5a: FAT-FIRST — vô điều kiện: bù Fat (Dầu ăn) cho đến khi đạt target ± 3g
+//  Bước 5b: Calorie gap sau fat → bù thêm tinh bột nhưng giới hạn bởi carb headroom
+//           Dư calo (oil đẩy lên) → triệt để cắt tinh bột, không giữ sàn tối thiểu
 function runCoreEngine(
   nameLists: Record<string, string[]>,
   macros: { calories: number; protein: number; fat: number; carbs: number },
@@ -260,69 +259,82 @@ function runCoreEngine(
     const remainingCalBudget = Math.max(0, perMealCalories - currentMealCals);
     const starchFood         = pickByTag(i, 'starch');
 
-    if (starchFood && starchFood.carbs > 0 && starchFood.calories > 0) {
+    // Chỉ thêm tinh bột khi còn dư carb budget — TUYỆT ĐỐI KHÔNG gán sàn tối thiểu
+    if (starchFood && starchFood.carbs > 0 && starchFood.calories > 0 && neededStarchCarbs > 0) {
       const gramsByCarbs = Math.round((neededStarchCarbs  / starchFood.carbs)    * 100);
       const gramsByCal   = Math.round((remainingCalBudget / starchFood.calories) * 100);
-      // Take the lower of carb-driven vs calorie-budget-driven; floor 30g
-      const starchGrams  = Math.max(30, Math.min(gramsByCarbs, gramsByCal));
-      items.push({ food: starchFood, grams: starchGrams });
-      used.add(starchFood.name);
+      const starchGrams  = Math.min(gramsByCarbs, gramsByCal); // no floor — co giãn tự do theo carb target
+      if (starchGrams > 0) {
+        items.push({ food: starchFood, grams: starchGrams });
+        used.add(starchFood.name);
+      }
     }
 
     mealItems.push(items);
   }
 
-  // ── Bước 5: Vá mịn Calories cuối ngày — sai số < 2% ─────────────────────
+  // ── Bước 5: Vá mịn macro cuối ngày ──────────────────────────────────────
   const sumCal   = (its: Array<{ food: FoodItem; grams: number }>) =>
     its.reduce((s, { food, grams }) => s + food.calories * grams / 100, 0);
-  const sumCarbs = (its: Array<{ food: FoodItem; grams: number }>) =>
-    its.reduce((s, { food, grams }) => s + food.carbs * grams / 100, 0);
   const sumFat   = (its: Array<{ food: FoodItem; grams: number }>) =>
-    its.reduce((s, { food, grams }) => s + food.fat * grams / 100, 0);
+    its.reduce((s, { food, grams }) => s + food.fat      * grams / 100, 0);
+  const sumCarbs = (its: Array<{ food: FoodItem; grams: number }>) =>
+    its.reduce((s, { food, grams }) => s + food.carbs    * grams / 100, 0);
 
+  // ── Bước 5a: FAT-FIRST — bù Fat ưu tiên tuyệt đối, không chặn vì sợ thừa Calo ──
+  const oilFood = FOODS.find(f => f.name === 'Dầu ăn (Chung)')
+    ?? FOODS.find(f => f.tag === 'fat' && f.fat >= 80 && f.calories > 0);
+
+  const fatBefore = mealItems.reduce((s, its) => s + sumFat(its), 0);
+  const fatGap    = macros.fat - fatBefore;
+
+  if (fatGap > 3 && oilFood && oilFood.fat > 0) {
+    const totalOilGrams   = (fatGap / oilFood.fat) * 100;
+    const perMealOilGrams = Math.round(totalOilGrams / mealCount);
+    if (perMealOilGrams >= 1) {
+      for (let i = 0; i < mealCount; i++) {
+        mealItems[i].push({ food: oilFood, grams: perMealOilGrams });
+      }
+    }
+  }
+
+  // ── Bước 5b: Calorie gap — sau khi Fat đã được bù đủ ─────────────────────
   const currentDayCalories = mealItems.reduce((s, its) => s + sumCal(its), 0);
   const calGap    = macros.calories - currentDayCalories;
   const tolerance = macros.calories * 0.02;
 
   if (calGap > tolerance) {
+    // Còn thiếu Calo → bù tinh bột nhưng giới hạn bởi carb headroom còn lại
     const currentDayCarbs = mealItems.reduce((s, its) => s + sumCarbs(its), 0);
-    const currentDayFat   = mealItems.reduce((s, its) => s + sumFat(its), 0);
-    const carbsDeficitPct = macros.carbs > 0 ? (macros.carbs - currentDayCarbs) / macros.carbs : 0;
-    const fatDeficitPct   = macros.fat   > 0 ? (macros.fat   - currentDayFat)   / macros.fat   : 0;
-
-    if (carbsDeficitPct >= fatDeficitPct) {
-      // Carbs thiếu nhiều hơn → bù tinh bột vào từng bữa
-      const extraCalPerMeal = calGap / mealCount;
+    const carbsHeadroom   = macros.carbs - currentDayCarbs; // gram carb còn được phép thêm
+    if (carbsHeadroom > 0) {
+      const extraCalPerMeal   = calGap / mealCount;
+      const carbsPerMealExtra = carbsHeadroom / mealCount;
       for (const its of mealItems) {
         const starchItem = its.find(x => x.food.tag === 'starch');
-        if (starchItem && starchItem.food.calories > 0) {
-          const extraGrams = Math.round((extraCalPerMeal / starchItem.food.calories) * 100);
+        if (starchItem && starchItem.food.calories > 0 && starchItem.food.carbs > 0) {
+          const gramsByCal   = Math.round((extraCalPerMeal   / starchItem.food.calories) * 100);
+          const gramsByCarb  = Math.round((carbsPerMealExtra / starchItem.food.carbs)    * 100);
+          const extraGrams   = Math.min(gramsByCal, gramsByCarb); // không vượt trần carb
           if (extraGrams >= 5) starchItem.grams += extraGrams;
         }
       }
-    } else {
-      // Fat thiếu nhiều hơn → bù dầu ăn vào từng bữa
-      const oilFood = FOODS.find(f => f.name === 'Dầu ăn (Chung)');
-      if (oilFood && oilFood.calories > 0) {
-        const totalOilGrams   = (calGap / oilFood.calories) * 100;
-        const perMealOilGrams = Math.round(totalOilGrams / mealCount);
-        if (perMealOilGrams >= 2) {
-          for (let i = 0; i < mealCount; i++) {
-            mealItems[i].push({ food: oilFood, grams: perMealOilGrams });
-          }
-        }
-      }
     }
+    // Nếu vẫn còn calorie gap sau khi đã đụng trần carb → chấp nhận, macro precision > calorie target
   } else if (calGap < -tolerance) {
-    // Dư Calo → scale down tinh bột
-    const scale = Math.max(0.5, macros.calories / currentDayCalories);
+    // Dư Calo (do oil đẩy lên) → triệt để cắt tinh bột, không giữ sàn
+    const scale = macros.calories / currentDayCalories;
     if (scale < 0.98) {
       for (const its of mealItems) {
         for (const item of its) {
           if (item.food.tag === 'starch') {
-            item.grams = Math.max(30, Math.round(item.grams * scale));
+            item.grams = Math.round(item.grams * scale);
           }
         }
+      }
+      // Xóa starch item bị scale về 0
+      for (let m = 0; m < mealItems.length; m++) {
+        mealItems[m] = mealItems[m].filter(x => !(x.food.tag === 'starch' && x.grams <= 0));
       }
     }
   }
