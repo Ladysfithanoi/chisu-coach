@@ -206,39 +206,64 @@ interface MealSolution {
   items: Array<{ food: FoodItem; grams: number }>;
 }
 
-// 3-step cascade per meal:
-//   P1 FIBER:    veg_grams    = (fiberShare / food.fiber) × 100
-//   P2 PROTEIN:  meat_grams   = (remainingProtein / food.protein) × 100  [tolerance ±5–10%]
-//   P3 CALORIES: starch_grams = (remainingCalories / food.calories) × 100 [Carbs/Fat flexible]
-// All macro numbers computed from DB values only — AI produces zero numbers.
+// 3-step cascade per meal — all numbers come from DB × grams / 100, never from AI:
+//   A FIBER:    veg_grams    = (perMealFiber / food.fiber) × 100  → lock veg
+//   B PROTEIN:  meat_grams   = (remainingProtein / food.protein) × 100  → lock protein
+//   C CALORIES: starch_grams = (remainingCalories / food.calories) × 100 → fill gap
+//
+// usedGlobally tracks foods already in other meals so the solver injects
+// distinct fallback foods instead of repeating the same protein/veg.
 function solveMealGrams(
   mealName: string,
   foodNames: string[],
   perMealMacros: { calories: number; protein: number; fat: number; carbs: number },
-  mealFiberTarget: number
+  mealFiberTarget: number,
+  usedGlobally: Set<string>
 ): MealSolution {
   type Tagged = { food: FoodItem; category: FoodCategory };
 
-  // Match names → DB; skip any complex dishes even if AI returned them
+  // Match names → DB; drop complex dishes even if AI returned them
   const tagged: Tagged[] = foodNames
     .map(n => findBestMatchingFood(n))
     .filter((f): f is FoodItem => f !== null)
     .filter(f => !isComplexDish(f))
     .map(f => ({ food: f, category: classifyFood(f) }));
 
-  const vegs = tagged.filter(t => t.category === 'vegetable');
-  // Enforce exactly 1 protein and 1 starch to prevent calorie explosion
-  const protein1 = tagged.find(t => t.category === 'protein') ?? null;
-  const starch1  = tagged.find(t => t.category === 'starch')  ?? null;
+  // Collect all names already committed in this meal + prior meals
+  const notAvail = (name: string) => usedGlobally.has(name);
+
+  let vegList  = tagged.filter(t => t.category === 'vegetable');
+  let protein1 = tagged.find(t => t.category === 'protein') ?? null;
+  let starch1  = tagged.find(t => t.category === 'starch')  ?? null;
+
+  // ── Fallback: inject a veg if AI didn't suggest one ──────────────────────
+  if (vegList.length === 0) {
+    const fb = FOODS.find(f =>
+      isVegetable(f) &&
+      !notAvail(f.name) &&
+      (f as FoodItem & { fiber?: number }).fiber !== undefined
+    );
+    if (fb) vegList = [{ food: fb, category: 'vegetable' }];
+  }
+
+  // ── Fallback: inject a protein if AI didn't suggest one ──────────────────
+  // This is the critical guard — prevents day-level scaler from over-loading
+  // a single meal with 400g of chicken to compensate a missing meal protein.
+  if (!protein1) {
+    const fb =
+      FOODS.find(f => classifyFood(f) === 'protein' && !isComplexDish(f) && !notAvail(f.name) && f.protein > 18 && f.fat < 8) ??
+      FOODS.find(f => classifyFood(f) === 'protein' && !isComplexDish(f) && !notAvail(f.name) && f.protein > 12) ??
+      null;
+    if (fb) protein1 = { food: fb, category: 'protein' };
+  }
 
   const items: Array<{ food: FoodItem; grams: number }> = [];
 
-  // ── P1: FIBER — lock veg grams ────────────────────────────────────────────
-  // Each veg gets an equal share of the meal fiber target.
+  // ── A: FIBER — lock veg grams (perMealFiber distributed across all vegs) ─
   let vegCalories = 0, vegProtein = 0;
-  if (vegs.length > 0) {
-    const fiberPerVeg = mealFiberTarget / vegs.length;
-    for (const { food } of vegs) {
+  {
+    const fiberPerVeg = mealFiberTarget / Math.max(vegList.length, 1);
+    for (const { food } of vegList) {
       const fib = (food as FoodItem & { fiber?: number }).fiber ?? 0;
       const grams = fib > 0
         ? Math.round(Math.max(80, Math.min(200, (fiberPerVeg / fib) * 100)))
@@ -249,7 +274,7 @@ function solveMealGrams(
     }
   }
 
-  // ── P2: PROTEIN — exact formula: meat_grams = (remainingProtein / food.protein) × 100 ──
+  // ── B: PROTEIN — lock 1 protein: meat_grams = remainingProtein/food.protein×100 ──
   let proteinFoodCalories = 0;
   if (protein1) {
     const { food } = protein1;
@@ -261,21 +286,18 @@ function solveMealGrams(
     proteinFoodCalories = food.calories * grams / 100;
   }
 
-  // ── P3: CALORIES — starch_grams = (remainingCalories / food.calories) × 100 ──
-  // Carbs and Fat are flexible within ±15%; calories must hit target.
+  // ── C: CALORIES — 1 starch fills remaining: starch_grams = remainingCal/food.cal×100 ──
   const caloriesLocked = vegCalories + proteinFoodCalories;
   const remainingCalories = perMealMacros.calories - caloriesLocked;
 
   if (remainingCalories > 30) {
-    // Use AI-suggested starch; fall back to Khoai lang if not matched
     let starchFood = starch1?.food ?? null;
     if (!starchFood) {
-      const usedNames = new Set(items.map(it => it.food.name));
-      // Prefer khoai lang → cơm lứt → any starch not yet used
+      // Fallback priority: khoai lang → cơm lứt → any starch not yet used globally
       starchFood =
-        FOODS.find(f => f.name.includes('Khoai lang') && !usedNames.has(f.name)) ??
-        FOODS.find(f => f.name.includes('Cơm') && classifyFood(f) === 'starch' && !usedNames.has(f.name)) ??
-        FOODS.find(f => classifyFood(f) === 'starch' && !usedNames.has(f.name) && f.calories > 0) ??
+        FOODS.find(f => f.name.includes('Khoai lang') && !notAvail(f.name)) ??
+        FOODS.find(f => f.name.includes('Cơm') && classifyFood(f) === 'starch' && !notAvail(f.name)) ??
+        FOODS.find(f => classifyFood(f) === 'starch' && !notAvail(f.name) && f.calories > 0) ??
         null;
     }
     if (starchFood) {
@@ -287,51 +309,30 @@ function solveMealGrams(
   return { mealName, items };
 }
 
-// ─── Day-Level Gate Functions ─────────────────────────────────────────────────
+// ─── Day-Level Calorie Gate ───────────────────────────────────────────────────
+// Protein is NOT scaled here — per-meal solver with fallbacks guarantees each
+// meal independently hits perMealProtein. Global protein scaling was removed
+// because it caused one meal to receive 400g meat when another meal had none.
 
-function sumSolutions(solutions: MealSolution[]): { calories: number; protein: number } {
+function sumSolutionCalories(solutions: MealSolution[]): number {
   return solutions.reduce(
-    (acc, sol) => {
-      for (const { food, grams } of sol.items) {
-        acc.calories += food.calories * grams / 100;
-        acc.protein  += food.protein  * grams / 100;
-      }
-      return acc;
-    },
-    { calories: 0, protein: 0 }
+    (sum, sol) => sum + sol.items.reduce((s, { food, grams }) => s + food.calories * grams / 100, 0),
+    0
   );
 }
 
-// Pass 1 — Scale protein food grams so daily protein hits target (±5–10%).
-function scaleDayProtein(solutions: MealSolution[], targetProtein: number): MealSolution[] {
-  const { protein: actualProtein } = sumSolutions(solutions);
-  const ratio = targetProtein / Math.max(actualProtein, 1);
-  // Within 5% → already good, skip
-  if (Math.abs(ratio - 1) <= 0.05) return solutions;
-  // Cap ratio at [0.5, 2.0] to prevent absurd portions
-  const clampedRatio = Math.max(0.5, Math.min(2.0, ratio));
-  return solutions.map(sol => ({
-    ...sol,
-    items: sol.items.map(item =>
-      classifyFood(item.food) === 'protein'
-        ? { ...item, grams: Math.round(Math.max(50, Math.min(400, item.grams * clampedRatio))) }
-        : item
-    ),
-  }));
-}
-
-// Pass 2 — Scale starch grams so daily calories hits target (±5–10%).
-// Run AFTER scaleDayProtein so protein calorie contribution is already updated.
+// Gently scale starch grams across all meals if total calories drift >10%.
+// Ratio clamped to [0.75, 1.4] — prevents absurd portions, only trims/adds starch.
 function scaleDayCalories(solutions: MealSolution[], targetCalories: number): MealSolution[] {
-  const { calories: actualCalories } = sumSolutions(solutions);
+  const actualCalories = sumSolutionCalories(solutions);
   const ratio = targetCalories / Math.max(actualCalories, 1);
-  if (Math.abs(ratio - 1) <= 0.05) return solutions;
-  const clampedRatio = Math.max(0.4, Math.min(2.5, ratio));
+  if (Math.abs(ratio - 1) <= 0.10) return solutions; // within 10% → accept
+  const r = Math.max(0.75, Math.min(1.4, ratio));
   return solutions.map(sol => ({
     ...sol,
     items: sol.items.map(item =>
       classifyFood(item.food) === 'starch'
-        ? { ...item, grams: Math.round(Math.max(30, Math.min(500, item.grams * clampedRatio))) }
+        ? { ...item, grams: Math.round(Math.max(30, Math.min(500, item.grams * r))) }
         : item
     ),
   }));
@@ -471,7 +472,8 @@ export async function POST(req: NextRequest) {
       throw new Error("AI không trả về danh sách tên thực phẩm hợp lệ");
     }
 
-    // ── Step 2: Backend Priority Matrix Solver ────────────────────────────
+    // ── Step 2: Backend Priority Matrix Solver (per-meal equal budgeting) ──
+    // Divide daily targets equally — every meal gets the same macro budget.
     const mealFiberTarget = (macros.calories / 1000) * 14 / mealCount;
     const perMealMacros = {
       calories: macros.calories / mealCount,
@@ -480,18 +482,26 @@ export async function POST(req: NextRequest) {
       carbs:    macros.carbs    / mealCount,
     };
 
+    // usedFoodNames ensures fallback protein/veg injected into later meals
+    // are distinct from foods already used in earlier meals.
+    const usedFoodNames = new Set<string>();
     let solutions: MealSolution[] = [];
+
     for (let i = 0; i < mealCount; i++) {
       const foodNames = nameLists[`meal_${i + 1}`] ?? [];
-      solutions.push(
-        solveMealGrams(getMealTimeLabel(i, mealCount), foodNames, perMealMacros, mealFiberTarget)
+      const sol = solveMealGrams(
+        getMealTimeLabel(i, mealCount),
+        foodNames,
+        perMealMacros,
+        mealFiberTarget,
+        usedFoodNames
       );
+      // Register all foods used in this meal before processing the next
+      for (const { food } of sol.items) usedFoodNames.add(food.name);
+      solutions.push(sol);
     }
 
-    // ── Step 3: Day-level gate — enforce ±5–10% on protein then calories ──
-    // Pass 1: protein (scales protein food grams)
-    solutions = scaleDayProtein(solutions, macros.protein);
-    // Pass 2: calories (scales starch grams, uses updated protein contributions)
+    // ── Step 3: Gentle calorie gate — only starch, only if drift >10% ────
     solutions = scaleDayCalories(solutions, macros.calories);
 
     // ── Step 4: Convert to AiMealRaw — all numbers from DB × grams / 100 ─
