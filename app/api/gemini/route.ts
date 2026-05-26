@@ -210,14 +210,19 @@ interface MealSolution {
   items: Array<{ food: FoodItem; grams: number }>;
 }
 
-// 3-Pass Solver — veg+starch locked first (collecting total plant protein),
-// then protein distributed using day-level reverse budget, then oil fills calorie gap.
-// No early return between passes — all 3 passes ALWAYS run in sequence.
+// 3-Pass Solver — Fiber + Protein are hard per-meal targets; Starch and Oil balance
+// at the day level. No per-meal calorie cap — inter-meal calorie variation is accepted.
 //
-//  Pass 1 VEG+STARCH:  lock grams per meal → accumulate totalPlantProtein
-//  Pass 2 PROTEIN:     actualAnimalProtein = targetProtein − totalPlantProtein (day-level)
-//                      perMealAnimalProtein = actualAnimalProtein / mealCount → lock per meal
-//  Pass 3 OIL:         fill (perMealCalories − currentMealCalories) per meal, fat budget cap
+//  Pass 1 VEG + PROTEIN (per meal):
+//    Step A: grams = (perMealFiber / veg.fiber) × 100  → locked
+//    Step B: mealAnimalProtein = perMealProtein − vegProtein  → locked
+//            (starch not yet computed — only veg protein is deducted)
+//  Pass 2 STARCH (day-level carb balancer):
+//    remainingCarbs = targetCarbs − totalVegCarbs
+//    dynamic starchMealCount (≥ 20g/meal); first starchMealCount meals receive starch
+//  Pass 3 OIL (day-level calorie top-up):
+//    remainingCalories = targetCalories − (veg+protein+starch totals)
+//    divided evenly across all meals, capped by fat budget
 function runCoreEngine(
   nameLists: Record<string, string[]>,
   macros: { calories: number; protein: number; fat: number; carbs: number },
@@ -260,23 +265,16 @@ function runCoreEngine(
     return fb ? [fb] : [];
   }
 
-  const perMealCalories  = macros.calories / mealCount;
-  const perMealFatBudget = macros.fat      / mealCount;
-  const perMealFiber     = (macros.calories / 1000 * 14) / mealCount;
-
+  const perMealProtein = macros.protein / mealCount;
+  const perMealFiber   = (macros.calories / 1000 * 14) / mealCount;
   const oilFood = FOODS.find(f => f.name === 'Dầu ăn (Chung)');
 
-  // Pre-compute how many meals receive starch.
-  // Reduce until each starch meal has ≥ 20g carb budget; never drops below 1.
-  let starchMealCount = mealCount;
-  while (starchMealCount > 1 && macros.carbs / starchMealCount < 20) {
-    starchMealCount--;
-  }
-  const carbPerStarchMeal = macros.carbs / starchMealCount;
-
-  // ── Pass 1: VEG + STARCH — lock per-meal portions, accumulate plant protein ──
+  // ── Pass 1: VEG + PROTEIN per meal ──────────────────────────────────────────
+  // Step A locks veg for fiber; Step B locks meat/fish for protein.
+  // No calorie cap on individual meals — calories co-giãn tự do ở bước này.
   const mealItems: Array<Array<{ food: FoodItem; grams: number }>> = [];
-  let totalPlantProtein = 0;
+  let totalVegCarbs = 0;
+  const noWhey = (f: FoodItem) => !isWhey(f);
 
   for (let i = 0; i < mealCount; i++) {
     const items: Array<{ food: FoodItem; grams: number }> = [];
@@ -284,7 +282,7 @@ function runCoreEngine(
     // Step A: VEG — lock grams to hit perMealFiber
     const vegFoods = pickVegs(i);
     const fiberPerVeg = perMealFiber / Math.max(vegFoods.length, 1);
-    let mealVegCarbs = 0;
+    let mealVegProtein = 0;
 
     for (const food of vegFoods) {
       const fib = (food as FoodItem & { fiber?: number }).fiber ?? 0;
@@ -292,14 +290,60 @@ function runCoreEngine(
         ? Math.round(Math.max(80, Math.min(200, (fiberPerVeg / fib) * 100)))
         : 100;
       items.push({ food, grams });
-      mealVegCarbs        += food.carbs   * grams / 100;
-      totalPlantProtein   += food.protein * grams / 100;
+      mealVegProtein += food.protein * grams / 100;
+      totalVegCarbs  += food.carbs   * grams / 100;
       used.add(food.name);
     }
 
-    // Step B: STARCH — first starchMealCount meals get starch
-    if (i < starchMealCount) {
-      const starchCarbTarget = Math.max(20, carbPerStarchMeal - mealVegCarbs);
+    // Step B: PROTEIN — bắt buộc, chỉ khấu trừ protein từ rau của bữa này
+    const mealAnimalProteinNeeded = Math.max(perMealProtein - mealVegProtein, 0);
+    const wheyAllowed = mealCount < 3 ? i === 0 : i !== mealCount - 1;
+
+    if (mealAnimalProteinNeeded >= 1) {
+      const proteinFood = wheyAllowed
+        ? pickFood(i, 'protein', f => f.protein > 18 && f.fat < 8)
+        : pickFood(i, 'protein', f => !isWhey(f) && f.protein > 18 && f.fat < 8, noWhey);
+
+      if (proteinFood) {
+        const targetGrams = proteinFood.protein > 0
+          ? Math.round(Math.max(50, Math.min(350, (mealAnimalProteinNeeded / proteinFood.protein) * 100)))
+          : 100;
+
+        if (isWhey(proteinFood) && targetGrams > 100) {
+          items.push({ food: proteinFood, grams: 100 });
+          used.add(proteinFood.name);
+          const deficit = mealAnimalProteinNeeded - proteinFood.protein;
+          if (deficit >= 5) {
+            const realFood = pickFood(i, 'protein', f => !isWhey(f) && f.protein > 18 && f.fat < 8, noWhey);
+            if (realFood) {
+              const realGrams = Math.round(Math.max(50, Math.min(350, (deficit / realFood.protein) * 100)));
+              items.push({ food: realFood, grams: realGrams });
+              used.add(realFood.name);
+            }
+          }
+        } else {
+          items.push({ food: proteinFood, grams: targetGrams });
+          used.add(proteinFood.name);
+        }
+      }
+    }
+
+    mealItems.push(items);
+  }
+
+  // ── Pass 2: STARCH — fill remaining carb budget (day-level), dynamic meal count ─
+  // remainingCarbs = targetCarbs − totalVegCarbs already locked in Pass 1.
+  // Reduces starchMealCount until each starch meal gets ≥ 20g carbs.
+  const remainingCarbs = macros.carbs - totalVegCarbs;
+
+  if (remainingCarbs >= 20) {
+    let starchMealCount = mealCount;
+    while (starchMealCount > 1 && remainingCarbs / starchMealCount < 20) {
+      starchMealCount--;
+    }
+    const carbPerStarchMeal = remainingCarbs / starchMealCount;
+
+    for (let i = 0; i < starchMealCount; i++) {
       const starchFood =
         pickFood(i, 'starch') ??
         FOODS.find(f => f.name.includes('Khoai lang') && notUsed(f.name)) ??
@@ -309,72 +353,36 @@ function runCoreEngine(
 
       if (starchFood) {
         const starchGrams = starchFood.carbs > 0
-          ? Math.round(Math.max(30, Math.min(400, (starchCarbTarget / starchFood.carbs) * 100)))
+          ? Math.round(Math.max(30, Math.min(400, (carbPerStarchMeal / starchFood.carbs) * 100)))
           : 100;
-        items.push({ food: starchFood, grams: starchGrams });
-        totalPlantProtein += starchFood.protein * starchGrams / 100;
+        mealItems[i].push({ food: starchFood, grams: starchGrams });
         used.add(starchFood.name);
       }
     }
-
-    mealItems.push(items);
   }
 
-  // ── Pass 2: PROTEIN — day-level reverse budget, distributed evenly per meal ──
-  // Uses totalPlantProtein from ALL meals combined — prevents per-meal starch inflation
-  // from inflating plant-protein and incorrectly blocking animal-protein addition.
-  // ALWAYS runs — no early return based on carb completion.
-  const actualAnimalProteinNeeded = Math.max(macros.protein - totalPlantProtein, 0);
-  const perMealAnimalProtein = actualAnimalProteinNeeded / mealCount;
-
-  if (perMealAnimalProtein >= 1) {
-    const noWhey = (f: FoodItem) => !isWhey(f);
-
-    for (let i = 0; i < mealCount; i++) {
-      const wheyAllowed = mealCount < 3 ? i === 0 : i !== mealCount - 1;
-
-      const proteinFood = wheyAllowed
-        ? pickFood(i, 'protein', f => f.protein > 18 && f.fat < 8)
-        : pickFood(i, 'protein', f => !isWhey(f) && f.protein > 18 && f.fat < 8, noWhey);
-
-      if (!proteinFood) continue;
-
-      const targetGrams = proteinFood.protein > 0
-        ? Math.round(Math.max(50, Math.min(350, (perMealAnimalProtein / proteinFood.protein) * 100)))
-        : 100;
-
-      if (isWhey(proteinFood) && targetGrams > 100) {
-        mealItems[i].push({ food: proteinFood, grams: 100 });
-        used.add(proteinFood.name);
-        const deficitProtein = perMealAnimalProtein - proteinFood.protein;
-        if (deficitProtein >= 5) {
-          const realFood = pickFood(i, 'protein', f => !isWhey(f) && f.protein > 18 && f.fat < 8, noWhey);
-          if (realFood) {
-            const realGrams = Math.round(Math.max(50, Math.min(350, (deficitProtein / realFood.protein) * 100)));
-            mealItems[i].push({ food: realFood, grams: realGrams });
-            used.add(realFood.name);
-          }
-        }
-      } else {
-        mealItems[i].push({ food: proteinFood, grams: targetGrams });
-        used.add(proteinFood.name);
-      }
-    }
-  }
-
-  // ── Pass 3: OIL — fill per-meal calorie gap AFTER protein is locked ──────────
+  // ── Pass 3: OIL — fill day-level calorie gap evenly, capped by fat budget ────
   if (oilFood) {
-    for (let i = 0; i < mealCount; i++) {
-      const currentCalories = mealItems[i].reduce((s, { food, grams }) => s + food.calories * grams / 100, 0);
-      const currentFat      = mealItems[i].reduce((s, { food, grams }) => s + food.fat      * grams / 100, 0);
-      const missingCalories = perMealCalories - currentCalories;
-      const remainingFat    = perMealFatBudget - currentFat;
+    const currentTotalCalories = mealItems.reduce(
+      (sum, items) => sum + items.reduce((s, { food, grams }) => s + food.calories * grams / 100, 0), 0
+    );
+    const currentTotalFat = mealItems.reduce(
+      (sum, items) => sum + items.reduce((s, { food, grams }) => s + food.fat * grams / 100, 0), 0
+    );
+    const remainingCalories  = macros.calories - currentTotalCalories;
+    const remainingFatBudget = macros.fat - currentTotalFat;
 
-      if (missingCalories > 0 && remainingFat > 0) {
-        const oilByCalories  = (missingCalories * 100) / oilFood.calories;
-        const oilByFatBudget = (remainingFat    * 100) / oilFood.fat;
-        const oilGrams = Math.round(Math.min(oilByCalories, oilByFatBudget));
-        if (oilGrams >= 2) mealItems[i].push({ food: oilFood, grams: oilGrams });
+    if (remainingCalories > 0 && remainingFatBudget > 0) {
+      const oilByCalories  = (remainingCalories   * 100) / oilFood.calories;
+      const oilByFatBudget = (remainingFatBudget  * 100) / oilFood.fat;
+      const totalOilGrams  = Math.min(oilByCalories, oilByFatBudget);
+      const perMealOilGrams = totalOilGrams / mealCount;
+
+      if (perMealOilGrams >= 2) {
+        for (let i = 0; i < mealCount; i++) {
+          const grams = Math.round(perMealOilGrams);
+          if (grams > 0) mealItems[i].push({ food: oilFood, grams });
+        }
       }
     }
   }
@@ -514,13 +522,6 @@ export async function POST(req: NextRequest) {
     }
     if (!mealCount || mealCount < 2 || mealCount > 5) {
       return NextResponse.json({ error: "Số bữa không hợp lệ (phải từ 2–5)" }, { status: 400 });
-    }
-
-    // Feasibility guard — mirrors the frontend mealFeasible check
-    if (macros.calories / mealCount < 350) {
-      return NextResponse.json({
-        error: `⚠️ Calories mục tiêu của khách hàng hiện tại quá thấp (${Math.round(macros.calories)} kcal). Việc chia thành ${mealCount} bữa sẽ làm lượng năng lượng và lượng tinh bột mỗi bữa bị bóp quá nhỏ, không khả thi để lên thực đơn thực tế. Khuyến nghị Coach nên thu gọn lại thành chế độ 2 bữa hoặc 3 bữa để đảm bảo hiệu quả dinh dưỡng!`,
-      }, { status: 400 });
     }
 
     // ── Step 1: AI returns food names only ────────────────────────────────
