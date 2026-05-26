@@ -86,13 +86,12 @@ function getMealTemplates(mealCount: number): MealSlot[] {
 
 function buildNameOnlySystemInstruction(
   mealCount: number,
-  macros: { calories: number; protein: number },
+  macros: { calories: number; protein: number; fat: number; carbs: number },
   preferences?: { likes?: string; dislikes?: string }
 ): string {
   const vegNames     = shuffleFoods(FOODS.filter(f => f.tag === 'veggie')).map(f => f.name);
   const fruitNames   = shuffleFoods(FOODS.filter(f => f.tag === 'fruit')).map(f => f.name);
   const starchNames  = shuffleFoods(FOODS.filter(f => f.tag === 'starch')).map(f => f.name);
-  const proteinNames = shuffleFoods(FOODS.filter(f => f.tag === 'protein')).map(f => f.name);
 
   const labels    = MEAL_TIMES[mealCount] ?? Array.from({ length: mealCount }, (_, i) => `Bữa ${i + 1}`);
   const templates = getMealTemplates(mealCount);
@@ -105,10 +104,22 @@ function buildNameOnlySystemInstruction(
     : '';
 
   const isLowCalHighProtein = macros.calories < 1300 && macros.protein > 120;
-  const leanProteinNames    = FOODS.filter(f => f.tag === 'protein' && f.fat <= 5).map(f => f.name);
-  const leanProteinBlock    = isLowCalHighProtein
-    ? `\n\n⚠️ CHẾ ĐỘ THẤP CALO / CAO ĐẠM — LUẬT ĐẶC BIỆT BẮT BUỘC (${macros.calories} kcal, ${macros.protein}g đạm):\nTUYỆT ĐỐI CẤM chọn thịt lợn, trứng gà, vịt quay, gà quay, hay bất kỳ nguồn đạm có Fat > 5g/100g.\nCHỈ ĐƯỢC PHÉP chọn PROTEIN từ danh sách siêu sạch sau:\n${leanProteinNames.join('\n')}`
-    : '';
+  const isHighCarbLowFat    = macros.carbs > 100 && macros.fat <= 60;
+
+  // Build restricted protein list and warning block depending on scenario
+  const leanProteinNames5 = FOODS.filter(f => f.tag === 'protein' && f.fat <= 5).map(f => f.name);
+  const leanProteinNames8 = FOODS.filter(f => f.tag === 'protein' && f.fat <= 8).map(f => f.name);
+  const proteinNames = isLowCalHighProtein
+    ? leanProteinNames5
+    : isHighCarbLowFat
+      ? leanProteinNames8
+      : shuffleFoods(FOODS.filter(f => f.tag === 'protein')).map(f => f.name);
+
+  const leanProteinBlock = isLowCalHighProtein
+    ? `\n\n⚠️ CHẾ ĐỘ THẤP CALO / CAO ĐẠM — LUẬT ĐẶC BIỆT BẮT BUỘC (${macros.calories} kcal, ${macros.protein}g đạm):\nTUYỆT ĐỐI CẤM chọn thịt lợn, trứng gà, vịt quay, gà quay, hay bất kỳ nguồn đạm có Fat > 5g/100g.\nCHỈ ĐƯỢC PHÉP chọn PROTEIN từ danh sách siêu sạch sau:\n${leanProteinNames5.join('\n')}`
+    : isHighCarbLowFat
+      ? `\n\n⚠️ CHẾ ĐỘ CAO CARBS / FAT THẤP — LUẬT ĐẶC BIỆT BẮT BUỘC (Carbs ${macros.carbs}g, Fat ${macros.fat}g):\nTUYỆT ĐỐI CẤM chọn trứng gà nguyên quả, gà quay có da, ba chỉ lợn, hay bất kỳ nguồn đạm có Fat > 8g/100g.\nLý do: Fat ẩn từ đạm chiếm hết quỹ Calo, tinh bột sẽ không còn chỗ đạt mốc ${macros.carbs}g.\nCHỈ ĐƯỢC PHÉP chọn PROTEIN từ danh sách đạm siêu nạc sau:\n${leanProteinNames8.join('\n')}`
+      : '';
 
   // Per-meal slot instructions derived from templates
   const mealSlotLines = templates.map((tmpl, idx) => {
@@ -217,6 +228,10 @@ function runCoreEngine(
   const used = new Set<string>();
   const isWhey = (f: FoodItem) => f.name.toLowerCase().includes('whey');
 
+  // When carbs target is high but fat budget is tight, block high-fat proteins
+  const needsLeanProtein = macros.carbs > 100 && macros.fat <= 60;
+  const LEAN_FAT_CEILING  = 8; // g fat per 100g — blocks eggs, roast chicken, fatty pork
+
   function pickByTag(mealIndex: number, tag: string, noWhey = false): FoodItem | null {
     const names = nameLists[`meal_${mealIndex + 1}`] ?? [];
     return names
@@ -227,6 +242,32 @@ function runCoreEngine(
         !used.has(f.name) &&
         (!noWhey || !isWhey(f))
       ) ?? null;
+  }
+
+  // Protein-specific picker: enforces fat ceiling then falls back to DB lean pool
+  function pickProtein(mealIndex: number, noWhey = false): FoodItem | null {
+    const names = nameLists[`meal_${mealIndex + 1}`] ?? [];
+    const fromAI = names
+      .map(n => findExactFood(n))
+      .find((f): f is FoodItem =>
+        f !== null &&
+        f.tag === 'protein' &&
+        !used.has(f.name) &&
+        (!noWhey || !isWhey(f)) &&
+        (!needsLeanProtein || f.fat <= LEAN_FAT_CEILING)
+      ) ?? null;
+    if (fromAI) return fromAI;
+    // AI gave no lean option — pull directly from DB
+    if (needsLeanProtein) {
+      return FOODS.find(f =>
+        f.tag === 'protein' &&
+        !used.has(f.name) &&
+        (!noWhey || !isWhey(f)) &&
+        f.fat <= LEAN_FAT_CEILING &&
+        f.protein > 15
+      ) ?? null;
+    }
+    return null;
   }
 
   function pickAllVeggies(mealIndex: number): FoodItem[] {
@@ -277,7 +318,7 @@ function runCoreEngine(
 
   for (let i = 0; i < mealCount; i++) {
     const banWheyLastMeal = mealCount >= 3 && i === mealCount - 1;
-    const meatFood = pickByTag(i, 'protein', banWheyLastMeal);
+    const meatFood = pickProtein(i, banWheyLastMeal);
 
     if (meatFood && meatFood.protein > 0) {
       if (isWhey(meatFood)) {
@@ -286,7 +327,7 @@ function runCoreEngine(
         used.add(meatFood.name);
         const remainder = perMealProtein - (meatFood.protein * wheyGrams / 100);
         if (remainder >= 5) {
-          const realMeat = pickByTag(i, 'protein', true);
+          const realMeat = pickProtein(i, true);
           if (realMeat && realMeat.protein > 0) {
             mealItems[i].push({ food: realMeat, grams: Math.round((remainder / realMeat.protein) * 100) });
             used.add(realMeat.name);
@@ -414,8 +455,14 @@ function runCoreEngine(
   const proteinFallback = (() => {
     const names = nameLists[`meal_${lastMainIdx + 1}`] ?? [];
     return names.map(n => findExactFood(n))
-      .find((f): f is FoodItem => f !== null && f.tag === 'protein' && !isWhey(f))
-      ?? FOODS.find(f => f.tag === 'protein' && !isWhey(f) && f.protein > 20)
+      .find((f): f is FoodItem =>
+        f !== null && f.tag === 'protein' && !isWhey(f) &&
+        (!needsLeanProtein || f.fat <= LEAN_FAT_CEILING)
+      )
+      ?? FOODS.find(f =>
+        f.tag === 'protein' && !isWhey(f) && f.protein > 20 &&
+        (!needsLeanProtein || f.fat <= LEAN_FAT_CEILING)
+      )
       ?? null;
   })();
 
