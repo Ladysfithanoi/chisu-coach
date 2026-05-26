@@ -210,25 +210,21 @@ interface MealSolution {
   items: Array<{ food: FoodItem; grams: number }>;
 }
 
-// 4-Stage Cascade — day-level totals computed first, then distributed per meal.
+// Meal Isolation Solver — each meal is solved independently to its own calorie/protein quota.
 // All gram values derived from DB × grams / 100; AI contributes zero numbers.
 //
-//  Stage 1 FIBER:   veg_grams = (perMealFiber / veg.fiber) × 100  → locked
-//  Stage 2 STARCH:  starch_grams = (carbPerMeal / starch.carbs) × 100
-//                   Dynamic starch-meal count: reduce until each meal ≥ 20g starch-carb
-//                   BLOCK starch entirely when totalVeggieCarbs ≥ 90% of targetCarbs
-//  Stage 3 PROTEIN: actualAnimalProtein = targetProtein − totalPlantProtein (veg + starch)
-//                   meat_grams = (perMealAnimalProtein / food.protein) × 100  → locked
-//  Stage 4 ASSEMBLE: collate items per meal; pass through scaleDayCalories safety gate
+//  Step A VEG:     grams = (perMealFiber / veg.fiber) × 100  → locked per meal
+//  Step B STARCH:  grams = (remainingMealCarbs / starch.carbs) × 100  → locked per meal
+//  Step C PROTEIN: mealAnimalProtein = perMealProtein − (vegP + starchP)  → locked per meal
+//  Step D OIL:     oilGrams fills (perMealCalories − currentMealCalories), capped by fat budget
 function runCoreEngine(
   nameLists: Record<string, string[]>,
   macros: { calories: number; protein: number; fat: number; carbs: number },
   mealCount: number
 ): MealSolution[] {
-  const used = new Set<string>(); // cross-meal uniqueness tracker
+  const used = new Set<string>();
   const notUsed = (name: string) => !used.has(name);
 
-  // Helper: get AI-suggested foods of a given category for one meal, with fallback
   function pickFood(
     mealIndex: number,
     category: FoodCategory,
@@ -263,18 +259,22 @@ function runCoreEngine(
     return fb ? [fb] : [];
   }
 
-  const totalFiberTarget = (macros.calories / 1000) * 14;
-  const perMealFiber = totalFiberTarget / mealCount;
+  const perMealCalories  = macros.calories / mealCount;
+  const perMealProtein   = macros.protein  / mealCount;
+  const perMealCarbs     = macros.carbs    / mealCount;
+  const perMealFatBudget = macros.fat      / mealCount;
+  const perMealFiber     = (macros.calories / 1000 * 14) / mealCount;
 
-  // ── Stage 1: FIBER — compute veg grams across all meals ──────────────────
-  const mealVegItems: Array<Array<{ food: FoodItem; grams: number }>> = [];
-  let totalVeggieCarbs = 0;
-  let totalVegProtein  = 0;
+  const oilFood = FOODS.find(f => f.name === 'Dầu ăn (Chung)');
+  const solutions: MealSolution[] = [];
 
   for (let i = 0; i < mealCount; i++) {
+    const items: Array<{ food: FoodItem; grams: number }> = [];
+
+    // ── Step A: VEG — lock grams to hit perMealFiber ─────────────────────
     const vegFoods = pickVegs(i);
     const fiberPerVeg = perMealFiber / Math.max(vegFoods.length, 1);
-    const items: Array<{ food: FoodItem; grams: number }> = [];
+    let mealVegCarbs = 0;
 
     for (const food of vegFoods) {
       const fib = (food as FoodItem & { fiber?: number }).fiber ?? 0;
@@ -282,152 +282,85 @@ function runCoreEngine(
         ? Math.round(Math.max(80, Math.min(200, (fiberPerVeg / fib) * 100)))
         : 100;
       items.push({ food, grams });
-      totalVeggieCarbs += food.carbs   * grams / 100;
-      totalVegProtein  += food.protein * grams / 100;
+      mealVegCarbs += food.carbs * grams / 100;
       used.add(food.name);
     }
 
-    mealVegItems.push(items);
-  }
+    // ── Step B: STARCH — cover per-meal carb quota minus veg carbs ───────
+    const remainingCarbsForStarch = perMealCarbs - mealVegCarbs;
 
-  // ── Stage 2: STARCH — carb-driven with dynamic meal-count reduction ───────
-  // BLOCK starch if veg already covers ≥ 90% of daily carb target
-  const mealStarchItem: Array<{ food: FoodItem; grams: number } | null> = Array(mealCount).fill(null);
-  let totalStarchProtein  = 0;
-  let totalStarchCalories = 0;
-
-  const starchBlocked = totalVeggieCarbs >= macros.carbs * 0.90;
-
-  if (!starchBlocked) {
-    const remainingStarchCarbs = macros.carbs - totalVeggieCarbs;
-
-    // Reduce starchMealCount until each starch meal contributes ≥ 20g carbs
-    let starchMealCount = mealCount;
-    while (starchMealCount > 1 && remainingStarchCarbs / starchMealCount < 20) {
-      starchMealCount--;
-    }
-    const carbPerStarchMeal = remainingStarchCarbs / starchMealCount;
-
-    for (let i = 0; i < starchMealCount; i++) {
-      const food =
+    if (remainingCarbsForStarch >= 20) {
+      const starchFood =
         pickFood(i, 'starch') ??
         FOODS.find(f => f.name.includes('Khoai lang') && notUsed(f.name)) ??
         FOODS.find(f => f.name.includes('Gạo lứt')   && notUsed(f.name)) ??
         FOODS.find(f => classifyFood(f) === 'starch'  && notUsed(f.name) && f.calories > 0) ??
         null;
 
-      if (food) {
-        const grams = food.carbs > 0
-          ? Math.round(Math.max(30, Math.min(400, (carbPerStarchMeal / food.carbs) * 100)))
+      if (starchFood) {
+        const starchGrams = starchFood.carbs > 0
+          ? Math.round(Math.max(30, Math.min(400, (remainingCarbsForStarch / starchFood.carbs) * 100)))
           : 100;
-        mealStarchItem[i] = { food, grams };
-        totalStarchProtein  += food.protein  * grams / 100;
-        totalStarchCalories += food.calories * grams / 100;
-        used.add(food.name);
+        items.push({ food: starchFood, grams: starchGrams });
+        used.add(starchFood.name);
       }
     }
-  }
 
-  // ── Stage 3: PROTEIN — reverse budgeting (deduct plant protein first) ────
-  // Whey guard: mealCount < 3 → Whey only in meal 0; mealCount ≥ 3 → Whey in any meal except last.
-  // Whey capped at 100g/serving; protein deficit above that filled by real food in same meal.
-  const totalPlantProtein = totalVegProtein + totalStarchProtein;
-  const actualAnimalProteinNeeded = Math.max(macros.protein - totalPlantProtein, 0);
-  const perMealAnimalProtein = actualAnimalProteinNeeded / mealCount;
-
-  const mealProteinItems: Array<Array<{ food: FoodItem; grams: number }>> = Array.from({ length: mealCount }, () => []);
-
-  for (let i = 0; i < mealCount; i++) {
-    if (perMealAnimalProtein < 5) break;
-
+    // ── Step C: PROTEIN — reverse-budget within this meal ────────────────
+    // Whey guard: mealCount < 3 → Whey only in meal 0; mealCount ≥ 3 → any meal except last.
+    const mealPlantProtein = items.reduce((s, { food, grams }) => s + food.protein * grams / 100, 0);
+    const mealAnimalProteinNeeded = Math.max(perMealProtein - mealPlantProtein, 0);
     const wheyAllowed = mealCount < 3 ? i === 0 : i !== mealCount - 1;
     const noWhey = (f: FoodItem) => !isWhey(f);
 
-    const food = wheyAllowed
-      ? pickFood(i, 'protein', f => f.protein > 18 && f.fat < 8)
-      : pickFood(i, 'protein', f => !isWhey(f) && f.protein > 18 && f.fat < 8, noWhey);
+    if (mealAnimalProteinNeeded >= 5) {
+      const proteinFood = wheyAllowed
+        ? pickFood(i, 'protein', f => f.protein > 18 && f.fat < 8)
+        : pickFood(i, 'protein', f => !isWhey(f) && f.protein > 18 && f.fat < 8, noWhey);
 
-    if (!food) continue;
+      if (proteinFood) {
+        const targetGrams = proteinFood.protein > 0
+          ? Math.round(Math.max(50, Math.min(350, (mealAnimalProteinNeeded / proteinFood.protein) * 100)))
+          : 100;
 
-    const targetGrams = food.protein > 0
-      ? Math.round(Math.max(50, Math.min(350, (perMealAnimalProtein / food.protein) * 100)))
-      : 100;
-
-    if (isWhey(food) && targetGrams > 100) {
-      // Cap Whey at 100g, compute remaining protein deficit, fill with real food
-      mealProteinItems[i].push({ food, grams: 100 });
-      used.add(food.name);
-
-      const wheyProteinProvided = food.protein; // per-100g value = grams protein from 100g serving
-      const deficitProtein = perMealAnimalProtein - wheyProteinProvided;
-      if (deficitProtein >= 5) {
-        const realFood = pickFood(i, 'protein', f => !isWhey(f) && f.protein > 18 && f.fat < 8, noWhey);
-        if (realFood) {
-          const realGrams = Math.round(Math.max(50, Math.min(350, (deficitProtein / realFood.protein) * 100)));
-          mealProteinItems[i].push({ food: realFood, grams: realGrams });
-          used.add(realFood.name);
-        }
-      }
-    } else {
-      mealProteinItems[i].push({ food, grams: targetGrams });
-      used.add(food.name);
-    }
-  }
-
-  // ── Stage 3.5: FAT BALANCER — fill calorie gap with cooking oil ──────────
-  // Oil adds calories without shifting Protein or Carbs at all.
-  // Guard: only inject when there is both a calorie gap AND remaining fat budget.
-  const oilFood = FOODS.find(f => f.name === 'Dầu ăn (Chung)');
-  const mealOilItem: Array<{ food: FoodItem; grams: number } | null> = Array(mealCount).fill(null);
-
-  if (oilFood && mealCount > 0) {
-    let currentCalories = 0;
-    let currentFat = 0;
-
-    for (let i = 0; i < mealCount; i++) {
-      for (const { food, grams } of mealVegItems[i]) {
-        currentCalories += food.calories * grams / 100;
-        currentFat      += food.fat      * grams / 100;
-      }
-      if (mealStarchItem[i]) {
-        currentCalories += mealStarchItem[i]!.food.calories * mealStarchItem[i]!.grams / 100;
-        currentFat      += mealStarchItem[i]!.food.fat      * mealStarchItem[i]!.grams / 100;
-      }
-      for (const { food, grams } of mealProteinItems[i]) {
-        currentCalories += food.calories * grams / 100;
-        currentFat      += food.fat      * grams / 100;
-      }
-    }
-
-    const missingCalories    = macros.calories - currentCalories;
-    const remainingFatBudget = macros.fat - currentFat;
-
-    if (missingCalories > 0 && remainingFatBudget > 0) {
-      // How many grams of oil cover the gap vs. how many the fat budget allows
-      const oilByCalories  = (missingCalories   * 100) / oilFood.calories;  // e.g. 169 * 100 / 884 ≈ 19g
-      const oilByFatBudget = (remainingFatBudget * 100) / oilFood.fat;       // fat budget → grams
-      const totalOilGrams  = Math.min(oilByCalories, oilByFatBudget);
-      const perMealOilGrams = totalOilGrams / mealCount;
-
-      if (perMealOilGrams >= 2) { // skip if less than 2g per meal — not meaningful
-        for (let i = 0; i < mealCount; i++) {
-          const grams = Math.round(perMealOilGrams);
-          if (grams > 0) mealOilItem[i] = { food: oilFood, grams };
+        if (isWhey(proteinFood) && targetGrams > 100) {
+          items.push({ food: proteinFood, grams: 100 });
+          used.add(proteinFood.name);
+          const deficitProtein = mealAnimalProteinNeeded - proteinFood.protein;
+          if (deficitProtein >= 5) {
+            const realFood = pickFood(i, 'protein', f => !isWhey(f) && f.protein > 18 && f.fat < 8, noWhey);
+            if (realFood) {
+              const realGrams = Math.round(Math.max(50, Math.min(350, (deficitProtein / realFood.protein) * 100)));
+              items.push({ food: realFood, grams: realGrams });
+              used.add(realFood.name);
+            }
+          }
+        } else {
+          items.push({ food: proteinFood, grams: targetGrams });
+          used.add(proteinFood.name);
         }
       }
     }
+
+    // ── Step D: OIL — fill per-meal calorie gap, capped by fat budget ─────
+    if (oilFood) {
+      const currentCalories = items.reduce((s, { food, grams }) => s + food.calories * grams / 100, 0);
+      const currentFat      = items.reduce((s, { food, grams }) => s + food.fat      * grams / 100, 0);
+      const missingCalories = perMealCalories - currentCalories;
+      const remainingFat    = perMealFatBudget - currentFat;
+
+      if (missingCalories > 0 && remainingFat > 0) {
+        const oilByCalories  = (missingCalories * 100) / oilFood.calories;
+        const oilByFatBudget = (remainingFat    * 100) / oilFood.fat;
+        const oilGrams = Math.round(Math.min(oilByCalories, oilByFatBudget));
+        if (oilGrams >= 2) items.push({ food: oilFood, grams: oilGrams });
+      }
+    }
+
+    solutions.push({ mealName: getMealTimeLabel(i, mealCount), items });
   }
 
-  // ── Stage 4: Assemble MealSolution per meal ───────────────────────────────
-  return Array.from({ length: mealCount }, (_, i) => ({
-    mealName: getMealTimeLabel(i, mealCount),
-    items: [
-      ...mealVegItems[i],
-      ...(mealStarchItem[i] ? [mealStarchItem[i]!] : []),
-      ...mealProteinItems[i],
-      ...(mealOilItem[i]    ? [mealOilItem[i]!]    : []),
-    ],
-  }));
+  return solutions;
 }
 
 // ─── Day-Level Calorie Safety Gate ───────────────────────────────────────────
