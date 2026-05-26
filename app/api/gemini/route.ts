@@ -46,11 +46,12 @@ function getMealTimeLabel(index: number, total: number): string {
 
 function buildNameOnlySystemInstruction(
   mealCount: number,
+  macros: { calories: number; protein: number },
   preferences?: { likes?: string; dislikes?: string }
 ): string {
-  const vegNames    = shuffleFoods(FOODS.filter(f => f.tag === 'veggie')).map(f => f.name);
-  const fruitNames  = shuffleFoods(FOODS.filter(f => f.tag === 'fruit')).map(f => f.name);
-  const starchNames = shuffleFoods(FOODS.filter(f => f.tag === 'starch')).map(f => f.name);
+  const vegNames     = shuffleFoods(FOODS.filter(f => f.tag === 'veggie')).map(f => f.name);
+  const fruitNames   = shuffleFoods(FOODS.filter(f => f.tag === 'fruit')).map(f => f.name);
+  const starchNames  = shuffleFoods(FOODS.filter(f => f.tag === 'starch')).map(f => f.name);
   const proteinNames = shuffleFoods(FOODS.filter(f => f.tag === 'protein')).map(f => f.name);
 
   const labels = MEAL_TIMES[mealCount] ?? Array.from({ length: mealCount }, (_, i) => `Bữa ${i + 1}`);
@@ -60,6 +61,14 @@ function buildNameOnlySystemInstruction(
   if (preferences?.dislikes) prefLines.push(`Ghét/Dị ứng: ${preferences.dislikes}`);
   const prefBlock = prefLines.length > 0
     ? `\n4. SỞ THÍCH: ${prefLines.join(' | ')}`
+    : '';
+
+  // Lean-protein override: when calories < 1300 AND protein > 120g,
+  // fat-heavy proteins (eggs, pork, duck) fill the calorie budget before hitting protein KPI
+  const isLowCalHighProtein = macros.calories < 1300 && macros.protein > 120;
+  const leanProteinNames    = FOODS.filter(f => f.tag === 'protein' && f.fat <= 5).map(f => f.name);
+  const leanProteinBlock    = isLowCalHighProtein
+    ? `\n\n⚠️ CHẾ ĐỘ THẤP CALO / CAO ĐẠM — LUẬT ĐẶC BIỆT BẮT BUỘC (${macros.calories} kcal, ${macros.protein}g đạm):\nTUYỆT ĐỐI CẤM chọn thịt lợn, trứng gà, vịt quay, gà quay, hay bất kỳ nguồn đạm có Fat > 5g/100g.\nCHỈ ĐƯỢC PHÉP chọn PROTEIN từ danh sách siêu sạch sau:\n${leanProteinNames.join('\n')}`
     : '';
 
   return `Mày là chuyên gia dinh dưỡng lên thực đơn giảm cân Việt Nam. Nhiệm vụ DUY NHẤT: trả về TÊN thực phẩm — Backend tự tính 100% số gram và macro, AI KHÔNG được đặt bất kỳ con số nào.
@@ -73,7 +82,7 @@ LUẬT TUYỆT ĐỐI — VI PHẠM = OUTPUT BỊ HỦY:
 1. CHỈ sao chép chính xác tên từ MENU bên dưới — sai một ký tự = backend không tìm được = bữa rỗng.
 2. Mỗi bữa: ĐÚNG 1 tên PROTEIN + ĐÚNG 1 tên TINH BỘT + 1-2 tên RAU + 0-1 tên TRÁI CÂY (tuỳ chọn).
 3. Không lặp cùng tên giữa các bữa.
-4. Bữa Sáng ưu tiên: Cơm lứt, Khoai lang ruột cam (thường) chín.${prefBlock}
+4. Bữa Sáng ưu tiên: Cơm lứt, Khoai lang ruột cam (thường) chín.${prefBlock}${leanProteinBlock}
 
 ════════════════ MENU — CHỈ ĐƯỢC CHỌN TỪ ĐÂY ════════════════
 
@@ -236,17 +245,26 @@ function runCoreEngine(
       used.add(veg.name);
     }
 
-    // ── Bước 4: TINH BỘT — bù carbs còn thiếu sau thịt+rau+quả ──────────────
+    // ── Bước 4: TINH BỘT — bù carbs còn thiếu, giới hạn bởi ngân sách calo còn lại ──
     const currentMealCarbs = items.reduce(
-      (s, { food, grams }) => s + food.carbs * grams / 100,
+      (s, { food, grams }) => s + food.carbs    * grams / 100,
       0
     );
-    const perMealCarbs      = macros.carbs / mealCount;
-    const neededStarchCarbs = Math.max(0, perMealCarbs - currentMealCarbs);
-    const starchFood        = pickByTag(i, 'starch');
+    const currentMealCals  = items.reduce(
+      (s, { food, grams }) => s + food.calories * grams / 100,
+      0
+    );
+    const perMealCalories    = macros.calories / mealCount;
+    const perMealCarbs       = macros.carbs / mealCount;
+    const neededStarchCarbs  = Math.max(0, perMealCarbs - currentMealCarbs);
+    const remainingCalBudget = Math.max(0, perMealCalories - currentMealCals);
+    const starchFood         = pickByTag(i, 'starch');
 
-    if (starchFood && starchFood.carbs > 0) {
-      const starchGrams = Math.max(30, Math.round((neededStarchCarbs / starchFood.carbs) * 100));
+    if (starchFood && starchFood.carbs > 0 && starchFood.calories > 0) {
+      const gramsByCarbs = Math.round((neededStarchCarbs  / starchFood.carbs)    * 100);
+      const gramsByCal   = Math.round((remainingCalBudget / starchFood.calories) * 100);
+      // Take the lower of carb-driven vs calorie-budget-driven; floor 30g
+      const starchGrams  = Math.max(30, Math.min(gramsByCarbs, gramsByCal));
       items.push({ food: starchFood, grams: starchGrams });
       used.add(starchFood.name);
     }
@@ -419,7 +437,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Step 1: AI trả về tên thực phẩm
-    const systemInstruction = buildNameOnlySystemInstruction(mealCount, preferences);
+    const systemInstruction = buildNameOnlySystemInstruction(mealCount, macros, preferences);
     const userPrompt        = buildNameOnlyUserPrompt(mealCount);
 
     let rawNames  = await callGemini(userPrompt, systemInstruction);
