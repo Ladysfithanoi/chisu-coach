@@ -266,6 +266,16 @@ function runCoreEngine(
   const perMealFiber     = (macros.calories / 1000 * 14) / mealCount;
 
   const oilFood = FOODS.find(f => f.name === 'Dầu ăn (Chung)');
+
+  // Pre-compute how many meals receive starch.
+  // Reduce starchMealCount until each starch meal has ≥ 20g carb budget from the day total.
+  // This prevents thin (<20g) portions spread across many meals AND ensures carbs are never dropped.
+  let starchMealCount = mealCount;
+  while (starchMealCount > 1 && macros.carbs / starchMealCount < 20) {
+    starchMealCount--;
+  }
+  const carbPerStarchMeal = macros.carbs / starchMealCount;
+
   const solutions: MealSolution[] = [];
 
   for (let i = 0; i < mealCount; i++) {
@@ -286,10 +296,11 @@ function runCoreEngine(
       used.add(food.name);
     }
 
-    // ── Step B: STARCH — cover per-meal carb quota minus veg carbs ───────
-    const remainingCarbsForStarch = perMealCarbs - mealVegCarbs;
-
-    if (remainingCarbsForStarch >= 20) {
+    // ── Step B: STARCH — only for the first starchMealCount meals ────────
+    // starchCarbTarget deducts veg carbs but floors at 20g to guarantee a real portion.
+    // Meals beyond starchMealCount are intentionally starch-free (carb budget too thin to split).
+    if (i < starchMealCount) {
+      const starchCarbTarget = Math.max(20, carbPerStarchMeal - mealVegCarbs);
       const starchFood =
         pickFood(i, 'starch') ??
         FOODS.find(f => f.name.includes('Khoai lang') && notUsed(f.name)) ??
@@ -299,7 +310,7 @@ function runCoreEngine(
 
       if (starchFood) {
         const starchGrams = starchFood.carbs > 0
-          ? Math.round(Math.max(30, Math.min(400, (remainingCarbsForStarch / starchFood.carbs) * 100)))
+          ? Math.round(Math.max(30, Math.min(400, (starchCarbTarget / starchFood.carbs) * 100)))
           : 100;
         items.push({ food: starchFood, grams: starchGrams });
         used.add(starchFood.name);
