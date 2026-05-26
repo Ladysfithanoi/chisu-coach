@@ -57,6 +57,10 @@ function isComplexDish(food: FoodItem): boolean {
   return COMPLEX_DISH_KEYWORDS.some(k => food.name.includes(k));
 }
 
+function isWhey(food: FoodItem): boolean {
+  return food.name.toLowerCase().includes('whey');
+}
+
 type FoodCategory = 'vegetable' | 'starch' | 'protein' | 'fat' | 'dish';
 
 function classifyFood(food: FoodItem): FoodCategory {
@@ -228,18 +232,21 @@ function runCoreEngine(
   function pickFood(
     mealIndex: number,
     category: FoodCategory,
-    fallbackFilter?: (f: FoodItem) => boolean
+    fallbackFilter?: (f: FoodItem) => boolean,
+    mustPass?: (f: FoodItem) => boolean
   ): FoodItem | null {
     const names = nameLists[`meal_${mealIndex + 1}`] ?? [];
     const fromAI = names
       .map(n => findBestMatchingFood(n))
-      .filter((f): f is FoodItem => f !== null && !isComplexDish(f) && classifyFood(f) === category && notUsed(f.name))
+      .filter((f): f is FoodItem => f !== null && !isComplexDish(f) && classifyFood(f) === category && notUsed(f.name) && (!mustPass || mustPass(f)))
       [0] ?? null;
     if (fromAI) return fromAI;
-    if (!fallbackFilter) return null;
-    return FOODS.find(f => !isComplexDish(f) && classifyFood(f) === category && notUsed(f.name) && fallbackFilter(f)) ??
-           FOODS.find(f => !isComplexDish(f) && classifyFood(f) === category && notUsed(f.name)) ??
-           null;
+    if (!fallbackFilter && !mustPass) return null;
+    return (
+      FOODS.find(f => !isComplexDish(f) && classifyFood(f) === category && notUsed(f.name) && (!fallbackFilter || fallbackFilter(f)) && (!mustPass || mustPass(f))) ??
+      FOODS.find(f => !isComplexDish(f) && classifyFood(f) === category && notUsed(f.name) && (!mustPass || mustPass(f))) ??
+      null
+    );
   }
 
   function pickVegs(mealIndex: number): FoodItem[] {
@@ -322,20 +329,47 @@ function runCoreEngine(
   }
 
   // ── Stage 3: PROTEIN — reverse budgeting (deduct plant protein first) ────
+  // Whey guard: mealCount < 3 → Whey only in meal 0; mealCount ≥ 3 → Whey in any meal except last.
+  // Whey capped at 100g/serving; protein deficit above that filled by real food in same meal.
   const totalPlantProtein = totalVegProtein + totalStarchProtein;
   const actualAnimalProteinNeeded = Math.max(macros.protein - totalPlantProtein, 0);
   const perMealAnimalProtein = actualAnimalProteinNeeded / mealCount;
 
-  const mealProteinItem: Array<{ food: FoodItem; grams: number } | null> = Array(mealCount).fill(null);
+  const mealProteinItems: Array<Array<{ food: FoodItem; grams: number }>> = Array.from({ length: mealCount }, () => []);
 
   for (let i = 0; i < mealCount; i++) {
-    if (perMealAnimalProtein < 5) break; // plant protein already covers target
-    const food = pickFood(i, 'protein', f => f.protein > 18 && f.fat < 8);
-    if (food) {
-      const grams = food.protein > 0
-        ? Math.round(Math.max(50, Math.min(350, (perMealAnimalProtein / food.protein) * 100)))
-        : 100;
-      mealProteinItem[i] = { food, grams };
+    if (perMealAnimalProtein < 5) break;
+
+    const wheyAllowed = mealCount < 3 ? i === 0 : i !== mealCount - 1;
+    const noWhey = (f: FoodItem) => !isWhey(f);
+
+    const food = wheyAllowed
+      ? pickFood(i, 'protein', f => f.protein > 18 && f.fat < 8)
+      : pickFood(i, 'protein', f => !isWhey(f) && f.protein > 18 && f.fat < 8, noWhey);
+
+    if (!food) continue;
+
+    const targetGrams = food.protein > 0
+      ? Math.round(Math.max(50, Math.min(350, (perMealAnimalProtein / food.protein) * 100)))
+      : 100;
+
+    if (isWhey(food) && targetGrams > 100) {
+      // Cap Whey at 100g, compute remaining protein deficit, fill with real food
+      mealProteinItems[i].push({ food, grams: 100 });
+      used.add(food.name);
+
+      const wheyProteinProvided = food.protein; // per-100g value = grams protein from 100g serving
+      const deficitProtein = perMealAnimalProtein - wheyProteinProvided;
+      if (deficitProtein >= 5) {
+        const realFood = pickFood(i, 'protein', f => !isWhey(f) && f.protein > 18 && f.fat < 8, noWhey);
+        if (realFood) {
+          const realGrams = Math.round(Math.max(50, Math.min(350, (deficitProtein / realFood.protein) * 100)));
+          mealProteinItems[i].push({ food: realFood, grams: realGrams });
+          used.add(realFood.name);
+        }
+      }
+    } else {
+      mealProteinItems[i].push({ food, grams: targetGrams });
       used.add(food.name);
     }
   }
@@ -345,8 +379,8 @@ function runCoreEngine(
     mealName: getMealTimeLabel(i, mealCount),
     items: [
       ...mealVegItems[i],
-      ...(mealStarchItem[i]  ? [mealStarchItem[i]!]  : []),
-      ...(mealProteinItem[i] ? [mealProteinItem[i]!] : []),
+      ...(mealStarchItem[i] ? [mealStarchItem[i]!] : []),
+      ...mealProteinItems[i],
     ],
   }));
 }
