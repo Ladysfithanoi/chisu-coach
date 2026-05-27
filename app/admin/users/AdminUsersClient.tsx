@@ -198,6 +198,15 @@ function EditModal({ user, onClose, onSaved }: EditModalProps) {
 export default function AdminUsersClient({ initialUsers }: Props) {
   const [users, setUsers] = useState<User[]>(initialUsers);
 
+  // ── Pagination ────────────────────────────────────────────────────────────
+  const pageSize = 5;
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.ceil(users.length / pageSize);
+  const paginatedUsers = users.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   // Create form state
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -233,7 +242,11 @@ export default function AdminUsersClient({ initialUsers }: Props) {
         return;
       }
 
-      if (data.user) setUsers((prev) => [...prev, data.user!]);
+      if (data.user) {
+        setUsers((prev) => [...prev, data.user!]);
+        // Nhảy đến trang cuối để thấy user vừa tạo
+        setCurrentPage(Math.ceil((users.length + 1) / pageSize));
+      }
       setName(""); setEmail(""); setPassword("");
       setFormSuccess(`Đã cấp tài khoản cho ${data.user?.name ?? email} thành công!`);
     } catch {
@@ -252,7 +265,15 @@ export default function AdminUsersClient({ initialUsers }: Props) {
       const data = await res.json() as { ok?: boolean; error?: string };
 
       if (!res.ok) { alert(data.error ?? "Không thể xóa tài khoản"); return; }
-      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      setUsers((prev) => {
+        const next = prev.filter((u) => u.id !== userId);
+        // Nếu trang hiện tại vượt quá tổng trang mới → lùi 1 trang
+        const newTotalPages = Math.ceil(next.length / pageSize);
+        if (currentPage > newTotalPages && newTotalPages > 0) {
+          setCurrentPage(newTotalPages);
+        }
+        return next;
+      });
     } catch {
       alert("Lỗi kết nối, vui lòng thử lại");
     } finally {
@@ -408,73 +429,154 @@ export default function AdminUsersClient({ initialUsers }: Props) {
                 Chưa có tài khoản nào
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr style={{ background: "rgba(18,16,13,0.03)", borderBottom: "1px solid rgba(18,16,13,0.06)" }}>
-                      <th className="text-left px-6 py-3 font-semibold" style={{ color: "rgba(18,16,13,0.5)" }}>Họ tên</th>
-                      <th className="text-left px-6 py-3 font-semibold" style={{ color: "rgba(18,16,13,0.5)" }}>Email</th>
-                      <th className="text-left px-6 py-3 font-semibold" style={{ color: "rgba(18,16,13,0.5)" }}>Vai trò</th>
-                      <th className="px-6 py-3" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map((user, idx) => (
-                      <tr
-                        key={user.id}
-                        style={{ borderBottom: idx < users.length - 1 ? "1px solid rgba(18,16,13,0.05)" : "none" }}
-                      >
-                        <td className="px-6 py-3.5 font-medium" style={{ color: "#12100d" }}>
-                          {user.name}
-                        </td>
-                        <td className="px-6 py-3.5" style={{ color: "rgba(18,16,13,0.65)" }}>
-                          {user.email}
-                        </td>
-                        <td className="px-6 py-3.5">
-                          <span
-                            className="text-xs font-bold px-2.5 py-1 rounded-full"
-                            style={
-                              user.role === "ADMIN"
-                                ? { background: "rgba(235,9,21,0.08)", color: "#eb0915" }
-                                : { background: "rgba(18,16,13,0.06)", color: "rgba(18,16,13,0.55)" }
-                            }
-                          >
-                            {user.role}
-                          </span>
-                        </td>
-                        <td className="px-6 py-3.5">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => { setEditingUser(user); setEditSuccess(""); }}
-                              className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                              style={{
-                                color: "rgba(18,16,13,0.6)",
-                                border: "1px solid rgba(18,16,13,0.15)",
-                                background: "rgba(18,16,13,0.03)",
-                              }}
-                            >
-                              Sửa
-                            </button>
-                            <button
-                              onClick={() => handleDelete(user.id, user.name)}
-                              disabled={deletingId === user.id}
-                              className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                              style={{
-                                color: deletingId === user.id ? "rgba(18,16,13,0.3)" : "#eb0915",
-                                border: `1px solid ${deletingId === user.id ? "rgba(18,16,13,0.1)" : "rgba(235,9,21,0.25)"}`,
-                                background: deletingId === user.id ? "transparent" : "rgba(235,9,21,0.04)",
-                                cursor: deletingId === user.id ? "not-allowed" : "pointer",
-                              }}
-                            >
-                              {deletingId === user.id ? "Đang xóa..." : "Xóa"}
-                            </button>
-                          </div>
-                        </td>
+              <>
+                {/* ── Table ── */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr style={{ background: "rgba(18,16,13,0.03)", borderBottom: "1px solid rgba(18,16,13,0.06)" }}>
+                        <th
+                          className="text-center px-4 py-3 font-semibold w-12"
+                          style={{ color: "rgba(18,16,13,0.5)" }}
+                        >
+                          STT
+                        </th>
+                        <th className="text-left px-6 py-3 font-semibold" style={{ color: "rgba(18,16,13,0.5)" }}>Họ tên</th>
+                        <th className="text-left px-6 py-3 font-semibold" style={{ color: "rgba(18,16,13,0.5)" }}>Email</th>
+                        <th className="text-left px-6 py-3 font-semibold" style={{ color: "rgba(18,16,13,0.5)" }}>Vai trò</th>
+                        <th className="px-6 py-3" />
                       </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedUsers.map((user, idx) => {
+                        const stt = (currentPage - 1) * pageSize + idx + 1;
+                        return (
+                          <tr
+                            key={user.id}
+                            style={{ borderBottom: idx < paginatedUsers.length - 1 ? "1px solid rgba(18,16,13,0.05)" : "none" }}
+                          >
+                            {/* STT */}
+                            <td className="px-4 py-3.5 text-center font-semibold tabular-nums" style={{ color: "rgba(18,16,13,0.35)" }}>
+                              {stt}
+                            </td>
+                            <td className="px-6 py-3.5 font-medium" style={{ color: "#12100d" }}>
+                              {user.name}
+                            </td>
+                            <td className="px-6 py-3.5" style={{ color: "rgba(18,16,13,0.65)" }}>
+                              {user.email}
+                            </td>
+                            <td className="px-6 py-3.5">
+                              <span
+                                className="text-xs font-bold px-2.5 py-1 rounded-full"
+                                style={
+                                  user.role === "ADMIN"
+                                    ? { background: "rgba(235,9,21,0.08)", color: "#eb0915" }
+                                    : { background: "rgba(18,16,13,0.06)", color: "rgba(18,16,13,0.55)" }
+                                }
+                              >
+                                {user.role}
+                              </span>
+                            </td>
+                            <td className="px-6 py-3.5">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => { setEditingUser(user); setEditSuccess(""); }}
+                                  className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                                  style={{
+                                    color: "rgba(18,16,13,0.6)",
+                                    border: "1px solid rgba(18,16,13,0.15)",
+                                    background: "rgba(18,16,13,0.03)",
+                                  }}
+                                >
+                                  Sửa
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(user.id, user.name)}
+                                  disabled={deletingId === user.id}
+                                  className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                                  style={{
+                                    color: deletingId === user.id ? "rgba(18,16,13,0.3)" : "#eb0915",
+                                    border: `1px solid ${deletingId === user.id ? "rgba(18,16,13,0.1)" : "rgba(235,9,21,0.25)"}`,
+                                    background: deletingId === user.id ? "transparent" : "rgba(235,9,21,0.04)",
+                                    cursor: deletingId === user.id ? "not-allowed" : "pointer",
+                                  }}
+                                >
+                                  {deletingId === user.id ? "Đang xóa..." : "Xóa"}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* ── Pagination Bar ── */}
+                {totalPages > 1 && (
+                  <div
+                    className="flex items-center justify-end gap-1.5 px-6 py-3"
+                    style={{ borderTop: "1px solid rgba(18,16,13,0.06)" }}
+                  >
+                    {/* Prev */}
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
+                      style={{
+                        border: "1px solid rgba(18,16,13,0.12)",
+                        background: currentPage === 1 ? "rgba(18,16,13,0.02)" : "white",
+                        color: currentPage === 1 ? "rgba(18,16,13,0.25)" : "rgba(18,16,13,0.6)",
+                        cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="15 18 9 12 15 6"/>
+                      </svg>
+                      Prev
+                    </button>
+
+                    {/* Page numbers */}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className="w-8 h-8 flex items-center justify-center text-xs font-bold rounded-lg transition-all"
+                        style={
+                          page === currentPage
+                            ? { background: "#eb0915", color: "white", border: "1px solid #eb0915" }
+                            : {
+                                background: "white",
+                                color: "rgba(18,16,13,0.55)",
+                                border: "1px solid rgba(18,16,13,0.12)",
+                                cursor: "pointer",
+                              }
+                        }
+                      >
+                        {page}
+                      </button>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+
+                    {/* Next */}
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
+                      style={{
+                        border: "1px solid rgba(18,16,13,0.12)",
+                        background: currentPage === totalPages ? "rgba(18,16,13,0.02)" : "white",
+                        color: currentPage === totalPages ? "rgba(18,16,13,0.25)" : "rgba(18,16,13,0.6)",
+                        cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      Next
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="9 18 15 12 9 6"/>
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
