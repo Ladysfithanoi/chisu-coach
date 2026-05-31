@@ -618,7 +618,9 @@ export default function MealPlanSection({
         });
       }, 1000);
     }
-  }, [result, mealCount]); // only re-create when inputs change
+    // Phải include cả macro sống: nếu thiếu, closure đóng băng ở giá trị mount
+    // (P/F/C=0 vì useEffect cha chưa kịp set) → API nhận target macro = 0.
+  }, [result, mealCount, liveDer, liveProtein, liveFat, liveCarbs]);
 
   // ── Manual food ────────────────────────────────────────────────────────────
 
