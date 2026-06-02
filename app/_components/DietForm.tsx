@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import MealPlanSection from "./MealPlanSection";
+import MealPlanSection, { type PlanMealsData } from "./MealPlanSection";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -86,7 +86,7 @@ const ACTIVITY_MULTIPLIERS: Record<ActivityLevel, number> = {
   level1: 1.2,
   level2: 1.4,
   level3: 1.6,
-  level4: 1.4,
+  level4: 1.9,
 };
 
 function calcTDEE(bmr: number, level: ActivityLevel): number {
@@ -175,7 +175,7 @@ const ACTIVITY_LABEL: Record<ActivityLevel, string> = {
   level1: "Tập tạ ≥3 buổi + <5.000 bước/ngày (×1.2)",
   level2: "Tập tạ ≥3 buổi + 5.000–6.999 bước/ngày (×1.4)",
   level3: "Tập tạ ≥3 buổi + 7.000–9.999 bước/ngày (×1.6)",
-  level4: "Tập tạ ≥3 buổi + ≥10.000 bước/ngày (×1.4)",
+  level4: "Tập tạ ≥3 buổi + ≥10.000 bước/ngày (×1.9)",
 };
 
 const INITIAL_FORM: FormState = {
@@ -195,9 +195,68 @@ const INITIAL_FORM: FormState = {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function DietForm({ userName }: { userName: string }) {
+export type DietFormMode = "standalone" | "pt-assign" | "self";
+
+export default function DietForm({
+  userName,
+  mode = "standalone",
+  assignStudent,
+  showChrome = true,
+  onSaved,
+}: {
+  userName: string;
+  mode?: DietFormMode;
+  assignStudent?: { id: string; name: string };
+  showChrome?: boolean;
+  onSaved?: () => void;
+}) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
+
+  // Thực đơn hiện tại (nâng lên từ MealPlanSection) + trạng thái lưu
+  const [planMeals, setPlanMeals] = useState<PlanMealsData | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const handlePlanChange = useCallback((data: PlanMealsData) => setPlanMeals(data), []);
+
+  async function handleSavePlan() {
+    if (!result || saving) return;
+    setSaving(true);
+    setSaveMsg(null);
+    const endpoint = mode === "pt-assign" ? "/api/pt/plans" : "/api/student/plans";
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: assignStudent?.id,
+          label: `${result.name} · ${GOAL_LABEL[result.weightGoal]}`,
+          calories: liveDer,
+          protein: macroP,
+          fat: macroF,
+          carbs: macroC,
+          mealCount: planMeals?.mealCount ?? 3,
+          nutritionJson: { ...result, protein: macroP, fat: macroF, carbs: macroC, der: liveDer },
+          aiMealsJson: planMeals?.aiMeals ?? null,
+          manualFoodsJson: planMeals?.manualFoods ?? null,
+        }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok) {
+        setSaveMsg({ ok: false, text: data.error ?? "Lưu thất bại" });
+        return;
+      }
+      setSaveMsg({
+        ok: true,
+        text: mode === "pt-assign" ? "Đã lưu & gán thực đơn cho học viên!" : "Đã lưu thực đơn của bạn!",
+      });
+      onSaved?.();
+    } catch {
+      setSaveMsg({ ok: false, text: "Lỗi kết nối, vui lòng thử lại" });
+    } finally {
+      setSaving(false);
+    }
+  }
   const [result, setResult] = useState<NutritionResult | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
   const [loggingOut, setLoggingOut] = useState(false);
@@ -552,13 +611,14 @@ export default function DietForm({ userName }: { userName: string }) {
       <div className="max-w-2xl mx-auto">
 
         {/* ── Header ── */}
+        {showChrome && (
         <header
           className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6"
           style={{ borderBottom: "1px solid rgba(18,16,13,0.08)" }}
         >
           <div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight leading-tight" style={{ color: "#12100d" }}>
-              Diet Plan{" "}
+              Chisu{" "}
               <span style={{ color: "#eb0915" }}>của {userName}</span>
             </h1>
             <p className="mt-1 text-sm" style={{ color: "rgba(18,16,13,0.5)" }}>
@@ -608,6 +668,7 @@ export default function DietForm({ userName }: { userName: string }) {
             </button>
           </div>
         </header>
+        )}
 
         {/* ── Form Card ── */}
         <div
@@ -1078,7 +1139,40 @@ export default function DietForm({ userName }: { userName: string }) {
             liveFat={macroF}
             liveCarbs={macroC}
             liveDer={liveDer}
+            onPlanChange={mode !== "standalone" ? handlePlanChange : undefined}
           />
+        )}
+
+        {/* ── Lưu & gán (PT) / Lưu (Học viên tự tính) ── */}
+        {result && mode !== "standalone" && (
+          <div className="mt-6">
+            {saveMsg && (
+              <p
+                className="text-sm mb-3 font-medium"
+                style={{ color: saveMsg.ok ? "#16a34a" : "#eb0915" }}
+              >
+                {saveMsg.text}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={handleSavePlan}
+              disabled={saving}
+              className="w-full py-3.5 rounded-xl font-bold text-base tracking-wide transition-all active:scale-[0.98]"
+              style={{
+                background: "#12100d",
+                color: "#ffffff",
+                cursor: saving ? "not-allowed" : "pointer",
+                opacity: saving ? 0.6 : 1,
+              }}
+            >
+              {saving
+                ? "Đang lưu..."
+                : mode === "pt-assign"
+                  ? `Lưu & gán thực đơn cho ${assignStudent?.name ?? "học viên"}`
+                  : "Lưu thực đơn của tôi"}
+            </button>
+          </div>
         )}
 
       </div>

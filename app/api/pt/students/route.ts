@@ -1,25 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { getAdminAuth } from "@/lib/auth";
+import { getPTAuth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
+// GET — danh sách học viên của PT đang đăng nhập
+export async function GET() {
+  const auth = await getPTAuth();
+  if (!auth.ok) {
+    return NextResponse.json({ error: "Không có quyền truy cập" }, { status: auth.kicked ? 401 : 403 });
+  }
+
+  const students = await prisma.user.findMany({
+    where: { ptId: auth.user.id, role: "STUDENT" },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      createdAt: true,
+      mealPlans: {
+        where: { isActive: true, source: "PT" },
+        select: { id: true, label: true, calories: true, updatedAt: true },
+        take: 1,
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return NextResponse.json({ students });
+}
+
+// POST — PT tạo học viên mới (tự gán ptId = chính mình)
 export async function POST(req: NextRequest) {
-  const auth = await getAdminAuth();
+  const auth = await getPTAuth();
   if (!auth.ok) {
     return NextResponse.json({ error: "Không có quyền truy cập" }, { status: auth.kicked ? 401 : 403 });
   }
 
   try {
-    const body = await req.json() as { name?: string; email?: string; password?: string; role?: string };
+    const body = (await req.json()) as { name?: string; email?: string; password?: string };
     const { name, email, password } = body;
-    const role = (["ADMIN", "PT", "STUDENT"] as const).includes(body.role as never)
-      ? (body.role as string)
-      : "PT";
 
     if (!name?.trim() || !email?.trim() || !password?.trim()) {
       return NextResponse.json({ error: "Vui lòng điền đầy đủ thông tin" }, { status: 400 });
     }
-
     if (password.length < 6) {
       return NextResponse.json({ error: "Mật khẩu phải có ít nhất 6 ký tự" }, { status: 400 });
     }
@@ -32,19 +55,20 @@ export async function POST(req: NextRequest) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    const user = await prisma.user.create({
+    const student = await prisma.user.create({
       data: {
         name: name.trim(),
         email: email.toLowerCase().trim(),
         password: hashedPassword,
-        role,
+        role: "STUDENT",
+        ptId: auth.user.id,
       },
-      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      select: { id: true, name: true, email: true, createdAt: true },
     });
 
-    return NextResponse.json({ ok: true, user });
+    return NextResponse.json({ ok: true, student });
   } catch (error) {
-    console.error("[create-user]", error);
+    console.error("[pt/students POST]", error);
     return NextResponse.json({ error: "Lỗi máy chủ, vui lòng thử lại" }, { status: 500 });
   }
 }

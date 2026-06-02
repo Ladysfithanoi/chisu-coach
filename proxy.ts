@@ -5,7 +5,16 @@ import { verifySession, COOKIE_NAME } from "@/lib/jwt";
 // The DB session-match check (kicked detection) is enforced inside each API route and
 // server component via lib/auth.ts.
 
-const API_PREFIXES = ["/api/gemini", "/api/admin"];
+const API_PREFIXES = [
+  "/api/gemini",
+  "/api/admin",
+  "/api/pt",
+  "/api/student",
+  "/api/weight",
+  "/api/foodlog",
+  "/api/transform",
+  "/api/upload",
+];
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -48,8 +57,16 @@ export const config = {
     // Protect main app pages
     "/",
     "/admin/:path*",
-    // Protect AI and admin APIs
+    "/pt/:path*",
+    "/student/:path*",
+    // Protect AI and role APIs
     "/api/gemini/:path*",
     "/api/admin/:path*",
+    "/api/pt/:path*",
+    "/api/student/:path*",
+    "/api/weight/:path*",
+    "/api/foodlog/:path*",
+    "/api/transform/:path*",
+    "/api/upload",
   ],
 };

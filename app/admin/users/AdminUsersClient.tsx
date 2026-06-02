@@ -211,6 +211,7 @@ export default function AdminUsersClient({ initialUsers }: Props) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("PT");
   const [formError, setFormError] = useState("");
   const [formSuccess, setFormSuccess] = useState("");
   const [creating, setCreating] = useState(false);
@@ -233,7 +234,7 @@ export default function AdminUsersClient({ initialUsers }: Props) {
       const res = await fetch("/api/admin/create-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), email: email.trim(), password }),
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), password, role }),
       });
       const data = await res.json() as { ok?: boolean; error?: string; user?: User };
 
@@ -247,7 +248,7 @@ export default function AdminUsersClient({ initialUsers }: Props) {
         // Nhảy đến trang cuối để thấy user vừa tạo
         setCurrentPage(Math.ceil((users.length + 1) / pageSize));
       }
-      setName(""); setEmail(""); setPassword("");
+      setName(""); setEmail(""); setPassword(""); setRole("PT");
       setFormSuccess(`Đã cấp tài khoản cho ${data.user?.name ?? email} thành công!`);
     } catch {
       setFormError("Lỗi kết nối, vui lòng thử lại");
@@ -322,13 +323,17 @@ export default function AdminUsersClient({ initialUsers }: Props) {
                 Cấp và thu hồi quyền truy cập hệ thống
               </p>
             </div>
-            <a
-              href="/"
+            <button
+              type="button"
+              onClick={async () => {
+                await fetch("/api/auth/logout", { method: "POST" });
+                window.location.replace("/login");
+              }}
               className="ml-auto text-sm font-medium px-4 py-2 rounded-xl transition-colors"
-              style={{ color: "rgba(18,16,13,0.55)", border: "1px solid rgba(18,16,13,0.12)", background: "white" }}
+              style={{ color: "#eb0915", border: "1px solid rgba(235,9,21,0.2)", background: "rgba(235,9,21,0.06)" }}
             >
-              ← Xem giao diện thực đơn
-            </a>
+              Đăng xuất
+            </button>
           </div>
 
           {/* Global edit success */}
@@ -361,7 +366,7 @@ export default function AdminUsersClient({ initialUsers }: Props) {
                     type="email"
                     value={email}
                     onChange={(e) => { setEmail(e.target.value); setFormError(""); setFormSuccess(""); }}
-                    placeholder="user@dietplan.com"
+                    placeholder="user@chisu.com"
                     required
                     className="dp-input"
                   />
@@ -378,6 +383,18 @@ export default function AdminUsersClient({ initialUsers }: Props) {
                   minLength={6}
                   className="dp-input"
                 />
+              </div>
+              <div>
+                <label className="dp-label">Vai trò</label>
+                <select
+                  value={role}
+                  onChange={(e) => { setRole(e.target.value); setFormError(""); setFormSuccess(""); }}
+                  className="dp-input"
+                >
+                  <option value="PT">PT (Huấn luyện viên)</option>
+                  <option value="STUDENT">Học viên</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
               </div>
 
               {formError && <ErrorBox msg={formError} />}

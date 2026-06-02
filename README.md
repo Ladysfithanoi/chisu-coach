@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Chisu — Máy Tính Dinh Dưỡng
 
-## Getting Started
+Ứng dụng Next.js 16 (App Router) tính toán dinh dưỡng chuyên sâu, lên thực đơn, có hệ thống đăng nhập + trang admin và tích hợp Gemini AI.
 
-First, run the development server:
+## Stack
+- **Next.js 16** + React 19 + TypeScript
+- **Tailwind CSS v4**
+- **Prisma v7** + PostgreSQL (Supabase) qua adapter `@prisma/adapter-pg`
+- **Auth**: JWT (jose) + bcryptjs, session cookie
+- **AI**: Gemini API (xoay vòng nhiều key)
 
+## Bắt đầu
+
+### 1. Cài dependencies
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Tạo project Supabase mới
+Dashboard → Settings → Database → Connection string. Lấy 2 URL và điền vào `.env.local`:
+- `DATABASE_URL` — pooler (port 6543), dùng cho runtime
+- `DIRECT_URL` — direct connection (port 5432), dùng cho `prisma db push`/migrations
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Đồng thời điền `GEMINI_API_KEYS` (lấy tại https://aistudio.google.com/app/apikey) và `JWT_SECRET`
+(đã tạo sẵn 1 secret ngẫu nhiên trong `.env.local`).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Đẩy schema lên DB & tạo tài khoản admin
+```bash
+npx prisma db push    # tạo bảng theo prisma/schema.prisma
+npm run seed          # tạo admin: admin@chisu.com / MatKhauAdmin123
+```
+> Đổi mật khẩu admin trong `prisma/seed.ts` trước khi seed nếu cần.
 
-## Learn More
+### 4. Chạy dev
+```bash
+npm run dev
+```
+Mở http://localhost:3000
 
-To learn more about Next.js, take a look at the following resources:
+## Deploy lên Vercel
+1. Push code lên repo GitHub mới (xem phần Git bên dưới).
+2. Import repo vào Vercel (tài khoản mới).
+3. Thêm Environment Variables trên Vercel: `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `GEMINI_API_KEYS`.
+4. Build command mặc định `npm run build` đã bao gồm `prisma generate`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Git
+Repo này đã được gỡ khỏi remote cũ. Để liên kết với repo GitHub mới:
+```bash
+git remote add origin <URL-repo-moi>
+git push -u origin main
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Lưu ý bảo mật
+- `.env*` đã được `.gitignore` — không commit secret.
+- Khi deploy thật, đảm bảo `JWT_SECRET` là chuỗi ngẫu nhiên đủ mạnh (đã tạo sẵn).

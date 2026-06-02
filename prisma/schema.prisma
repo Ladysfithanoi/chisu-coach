@@ -6,13 +6,108 @@ datasource db {
   provider = "postgresql"
 }
 
+// Roles: ADMIN | PT | STUDENT
 model User {
   id                   String    @id @default(cuid())
   name                 String
   email                String    @unique
   password             String
-  role                 String    @default("USER")
+  role                 String    @default("STUDENT")
   currentSessionToken  String?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
+
+  // PT ↔ Học viên (self-relation): mỗi học viên gắn với 1 PT
+  ptId                 String?
+  pt                   User?     @relation("PTStudents", fields: [ptId], references: [id])
+  students             User[]    @relation("PTStudents")
+
+  // Thực đơn được gán cho học viên này
+  mealPlans            MealPlan[] @relation("StudentPlans")
+  // Thực đơn do người này (PT) tạo
+  createdPlans         MealPlan[] @relation("CreatedPlans")
+  // Nhật ký cân nặng của học viên
+  weights              WeightEntry[] @relation("StudentWeights")
+  // Nhật ký ăn uống của học viên
+  foodLogs             FoodLog[]     @relation("StudentFoodLogs")
+  // Ảnh transform của học viên
+  transformPhotos      TransformPhoto[] @relation("StudentTransforms")
+
+  @@index([ptId])
+}
+
+// Nhật ký ăn uống theo ngày — ảnh + calo (đã quét AI hoặc nhập tay)
+model FoodLog {
+  id        String   @id @default(cuid())
+  studentId String
+  student   User     @relation("StudentFoodLogs", fields: [studentId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  mealLabel String?
+  photoUrl  String?  // Tham chiếu ảnh dạng "drive:<fileId>" (trống nếu nhập tay không ảnh)
+  name      String
+  calories  Int
+  protein   Int?
+  fat       Int?
+  carbs     Int?
+  aiRaw     Json?    // dữ liệu thô AI trả về (để tham chiếu)
+  createdAt DateTime @default(now())
+
+  @@index([studentId, date])
+}
+
+// Ảnh transform của học viên (để PT lưu trữ, sale sau này)
+model TransformPhoto {
+  id           String   @id @default(cuid())
+  studentId    String
+  student      User     @relation("StudentTransforms", fields: [studentId], references: [id], onDelete: Cascade)
+  uploadedById String   // ai upload (PT hoặc chính học viên)
+  photoUrl     String   // Tham chiếu ảnh dạng "drive:<fileId>"
+  takenAt      DateTime?
+  label        String?
+  createdAt    DateTime @default(now())
+
+  @@index([studentId])
+}
+
+// Nhật ký cân nặng theo ngày của học viên
+model WeightEntry {
+  id        String   @id @default(cuid())
+  studentId String
+  student   User     @relation("StudentWeights", fields: [studentId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  weightKg  Float
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, date])
+  @@index([studentId])
+}
+
+// Thực đơn đã lưu & gán cho học viên
+model MealPlan {
+  id              String   @id @default(cuid())
+  studentId       String
+  student         User     @relation("StudentPlans", fields: [studentId], references: [id], onDelete: Cascade)
+  createdById     String
+  createdBy       User     @relation("CreatedPlans", fields: [createdById], references: [id])
+
+  // "PT" = PT gán cho học viên · "SELF" = học viên tự tính
+  source          String   @default("PT")
+  label           String?
+  calories        Int
+  protein         Int
+  fat             Int
+  carbs           Int
+  mealCount       Int
+
+  nutritionJson   Json
+  aiMealsJson     Json?
+  manualFoodsJson Json?
+
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([studentId])
 }

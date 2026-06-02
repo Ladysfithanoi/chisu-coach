@@ -111,7 +111,7 @@ export default function LoginForm({ kicked }: { kicked: boolean }) {
             </svg>
           </div>
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: "#12100d" }}>
-            Diet Plan
+            Chisu Coach
           </h1>
           <p className="text-sm mt-1" style={{ color: "rgba(18,16,13,0.45)" }}>
             Đăng nhập để sử dụng máy tính dinh dưỡng
@@ -142,7 +142,7 @@ export default function LoginForm({ kicked }: { kicked: boolean }) {
                   setEmail(e.target.value);
                   if (error && !kicked) setError("");
                 }}
-                placeholder="admin@dietplan.com"
+                placeholder="admin@chisu.com"
                 required
                 className={`dp-input ${error ? "dp-input-error" : ""}`}
               />
@@ -266,7 +266,7 @@ export default function LoginForm({ kicked }: { kicked: boolean }) {
 
         {/* Footer hint */}
         <p className="text-center text-xs mt-5" style={{ color: "rgba(18,16,13,0.3)" }}>
-          Diet Plan © {new Date().getFullYear()} · Phần mềm quản lý dinh dưỡng
+          Chisu © {new Date().getFullYear()} · Phần mềm quản lý dinh dưỡng
         </p>
 
       </div>

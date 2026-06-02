@@ -6,8 +6,8 @@ import { readFileSync, writeFileSync } from 'fs';
 import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
-const DOCX_XML = 'C:/Users/Admin/Desktop/diet-plan/scripts/docx-extract/word/document.xml';
-const FOODS_TS = 'C:/Users/Admin/Desktop/diet-plan/lib/foods-data.ts';
+const DOCX_XML = 'C:/Users/Admin/Desktop/chisu/scripts/docx-extract/word/document.xml';
+const FOODS_TS = 'C:/Users/Admin/Desktop/chisu/lib/foods-data.ts';
 
 // TCVN3 map (same as extraction script)
 const TCVN3 = {

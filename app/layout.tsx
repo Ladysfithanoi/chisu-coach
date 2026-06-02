@@ -9,7 +9,7 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "Diet Plan - Máy Tính Dinh Dưỡng",
+  title: "Chisu - Máy Tính Dinh Dưỡng",
   description: "Tính toán dinh dưỡng chuyên sâu và lên thực đơn cho khách hàng",
 };
 

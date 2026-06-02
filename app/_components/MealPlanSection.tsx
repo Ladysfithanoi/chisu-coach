@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import type { NutritionResult } from "./DietForm";
 import { FOODS, type FoodItem } from "@/lib/foods-data";
 
@@ -8,7 +8,7 @@ import { FOODS, type FoodItem } from "@/lib/foods-data";
 
 // Flat structure — one object per meal, foods listed as a single string.
 // Simpler JSON = fewer tokens = faster + less likely to hit rate limits.
-interface AiMeal {
+export interface AiMeal {
   mealName: string;  // e.g. "Bữa 1 - Sáng (7:00)"
   name: string;      // e.g. "Cơm lứt 200g + Cá lóc hấp 150g + Rau cải luộc 100g"
   calories: number;
@@ -22,7 +22,7 @@ interface SavedIngredient {
   grams: number;
 }
 
-interface ManualFood {
+export interface ManualFood {
   id: string;
   name: string;
   calories: number;
@@ -30,6 +30,12 @@ interface ManualFood {
   fat: number;
   carbs: number;
   ingredients: SavedIngredient[];
+}
+
+export interface PlanMealsData {
+  aiMeals: AiMeal[] | null;
+  manualFoods: ManualFood[];
+  mealCount: number;
 }
 
 type Tab = "ai" | "manual";
@@ -215,7 +221,7 @@ function PdfTemplate({
       {/* ── Header ── */}
       <div style={{ background: "#eb0915", padding: "28px 40px 24px" }}>
         <div style={{ fontSize: "30px", fontWeight: 900, color: "#ffffff", letterSpacing: "-0.03em", lineHeight: 1 }}>
-          DIET PLAN
+          CHISU
         </div>
         <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.65)", marginTop: "6px", letterSpacing: "0.04em" }}>
           Máy Tính Dinh Dưỡng Chuyên Sâu
@@ -367,10 +373,10 @@ function PdfTemplate({
         alignItems: "center",
       }}>
         <span style={{ fontSize: "10px", color: "rgba(18,16,13,0.3)", fontStyle: "italic" }}>
-          Được tạo bởi Diet Plan · Máy Tính Dinh Dưỡng Chuyên Sâu
+          Được tạo bởi Chisu · Máy Tính Dinh Dưỡng Chuyên Sâu
         </span>
         <span style={{ fontSize: "12px", fontWeight: 900, color: "#eb0915", letterSpacing: "-0.01em" }}>
-          DIET PLAN
+          CHISU
         </span>
       </div>
     </div>
@@ -530,12 +536,15 @@ export default function MealPlanSection({
   liveFat,
   liveCarbs,
   liveDer,
+  onPlanChange,
 }: {
   result: NutritionResult;
   liveProtein: number;
   liveFat: number;
   liveCarbs: number;
   liveDer: number;
+  // Nâng state thực đơn lên cha (để PT/HV lưu). Cha nên memo bằng useCallback.
+  onPlanChange?: (data: PlanMealsData) => void;
 }) {
   const pdfRef = useRef<HTMLDivElement>(null);
   // Synchronous ref-based lock — set BEFORE any setState so no race condition
@@ -555,6 +564,11 @@ export default function MealPlanSection({
   const [editingMealId, setEditingMealId] = useState<string | null>(null);
 
   const [pdfLoading, setPdfLoading] = useState(false);
+
+  // Nâng thực đơn hiện tại lên cha mỗi khi thay đổi (cho luồng lưu & gán)
+  useEffect(() => {
+    onPlanChange?.({ aiMeals, manualFoods, mealCount });
+  }, [aiMeals, manualFoods, mealCount, onPlanChange]);
 
   // Bữa đang được chỉnh sửa bị loại khỏi tracking để PT thấy ngân sách thực
   const totals = manualFoods
@@ -741,7 +755,7 @@ export default function MealPlanSection({
         pdf.addImage(imgData, "PNG", margin, yOffset, contentW, totalImgH);
       }
 
-      pdf.save(`diet-plan-${result.name.replace(/\s+/g, "-")}.pdf`);
+      pdf.save(`chisu-${result.name.replace(/\s+/g, "-")}.pdf`);
     } catch (err) {
       console.error("PDF export failed:", err);
     } finally {

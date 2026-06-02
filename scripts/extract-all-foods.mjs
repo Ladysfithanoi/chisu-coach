@@ -2,7 +2,7 @@ import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { readFileSync, writeFileSync } from 'fs';
 
 const PDF_PATH = 'C:/Users/Admin/Downloads/VTN_FCT_2007.pdf';
-const OUT_TS   = 'C:/Users/Admin/Desktop/diet-plan/lib/foods-data.ts';
+const OUT_TS   = 'C:/Users/Admin/Desktop/chisu/lib/foods-data.ts';
 
 // TCVN3 → Unicode mapping (Windows-1252 code points → Vietnamese Unicode)
 // Uses Unicode escapes to avoid source-file encoding ambiguity.

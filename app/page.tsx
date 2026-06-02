@@ -1,26 +1,20 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { verifySession, COOKIE_NAME } from "@/lib/jwt";
-import prisma from "@/lib/prisma";
-import DietForm from "./_components/DietForm";
+import { getAuth, ROLES } from "@/lib/auth";
 
 export default async function Home() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
+  const auth = await getAuth();
 
-  if (!token) redirect("/login");
-
-  let session;
-  try {
-    session = await verifySession(token);
-  } catch {
-    redirect("/login");
+  if (!auth.ok) {
+    redirect(auth.kicked ? "/login?kicked=1" : "/login");
   }
 
-  const user = await prisma.user.findUnique({ where: { id: session.sub } });
-  if (!user || user.currentSessionToken !== session.sid) {
-    redirect("/login?kicked=1");
+  switch (auth.session.role) {
+    case ROLES.ADMIN:
+      redirect("/admin/users");
+    case ROLES.PT:
+      redirect("/pt");
+    case ROLES.STUDENT:
+    default:
+      redirect("/student");
   }
-
-  return <DietForm userName={user.name} />;
 }

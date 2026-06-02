@@ -5,7 +5,7 @@ const EXPIRY = "7d";
 
 function secret(): Uint8Array {
   return new TextEncoder().encode(
-    process.env.JWT_SECRET ?? "diet-plan-fallback-secret-change-me"
+    process.env.JWT_SECRET ?? "chisu-fallback-secret-change-me"
   );
 }
 

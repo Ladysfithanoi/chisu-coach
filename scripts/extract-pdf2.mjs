@@ -2,7 +2,7 @@ import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { readFileSync, writeFileSync } from 'fs';
 
 const PDF_PATH  = 'C:/Users/Admin/Downloads/VTN_FCT_2007.pdf';
-const OUT_PATH  = 'C:/Users/Admin/Desktop/diet-plan/scripts/raw-lines.txt';
+const OUT_PATH  = 'C:/Users/Admin/Desktop/chisu/scripts/raw-lines.txt';
 
 async function getLines(pdf, pageNum) {
   const page = await pdf.getPage(pageNum);
