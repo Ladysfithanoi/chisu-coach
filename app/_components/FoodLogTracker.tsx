@@ -376,7 +376,7 @@ export default function FoodLogTracker({
             style={{ background: "rgba(18,16,13,0.05)", color: "rgba(18,16,13,0.7)" }}>
             ✏️ Thêm thủ công
           </button>
-          <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={onPickPhoto} />
+          <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPickPhoto} />
         </div>
       )}
 
