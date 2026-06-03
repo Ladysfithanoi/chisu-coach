@@ -171,7 +171,9 @@ export default function PTDashboard({
 
           {/* Giữ cả 2 tab mounted để không mất trạng thái khi chuyển qua lại */}
           <div style={{ display: detailTab === "plan" ? "block" : "none" }}>
+            {/* key theo học viên: mỗi học viên có editor thực đơn sạch, không dính bữa của người trước */}
             <DietForm
+              key={selected.id}
               userName={ptName}
               mode="pt-assign"
               assignStudent={{ id: selected.id, name: selected.name }}

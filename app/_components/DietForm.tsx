@@ -217,6 +217,9 @@ export default function DietForm({
   const [planMeals, setPlanMeals] = useState<PlanMealsData | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  // Bump để remount MealPlanSection sau khi lưu → editor sạch cho thực đơn kế tiếp,
+  // tránh gộp bữa của thực đơn vừa gửi vào thực đơn mới.
+  const [planEditorKey, setPlanEditorKey] = useState(0);
   const handlePlanChange = useCallback((data: PlanMealsData) => setPlanMeals(data), []);
 
   async function handleSavePlan() {
@@ -250,6 +253,9 @@ export default function DietForm({
         ok: true,
         text: mode === "pt-assign" ? "Đã lưu & gán thực đơn cho học viên!" : "Đã lưu thực đơn của bạn!",
       });
+      // Xoá thực đơn trong editor sau khi gửi: lần lập kế tiếp bắt đầu từ trống.
+      setPlanMeals(null);
+      setPlanEditorKey((k) => k + 1);
       onSaved?.();
     } catch {
       setSaveMsg({ ok: false, text: "Lỗi kết nối, vui lòng thử lại" });
@@ -1134,6 +1140,7 @@ export default function DietForm({
         {/* ── Meal Plan Section (Bước 3) ── */}
         {result && (
           <MealPlanSection
+            key={planEditorKey}
             result={result}
             liveProtein={macroP}
             liveFat={macroF}
