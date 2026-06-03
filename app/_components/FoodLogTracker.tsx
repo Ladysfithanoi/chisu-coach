@@ -42,9 +42,9 @@ function addDays(dateStr: string, n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-// Bản nháp món đang thêm (từ ảnh quét AI, chọn từ thư viện, hoặc nhập tay).
+// Bản nháp món đang thêm (từ ảnh quét AI hoặc nhập tay/chọn từ thư viện).
 type Draft = {
-  source: "photo" | "manual" | "library";
+  source: "photo" | "manual";
   imageBase64?: string;
   mimeType?: string;
   preview?: string;
@@ -204,10 +204,6 @@ export default function FoodLogTracker({
 
   function startManual() {
     setDraft({ source: "manual", ...EMPTY_DRAFT });
-  }
-
-  function startLibrary() {
-    setDraft({ source: "library", ...EMPTY_DRAFT });
   }
 
   function setField(field: keyof Draft, value: string) {
@@ -370,23 +366,16 @@ export default function FoodLogTracker({
 
       {/* Nút thêm món */}
       {!draft && !readOnly && (
-        <div className="space-y-3">
-          <button type="button" onClick={startLibrary}
-            className="w-full py-3 rounded-xl text-sm font-bold text-white" style={{ background: "#eb0915" }}>
-            🔍 Chọn từ thư viện món
+        <div className="grid grid-cols-2 gap-3">
+          <button type="button" onClick={() => fileRef.current?.click()}
+            className="py-3 rounded-xl text-sm font-bold text-white" style={{ background: "#eb0915" }}>
+            📷 Quét ảnh món ăn
           </button>
-          <div className="grid grid-cols-2 gap-3">
-            <button type="button" onClick={() => fileRef.current?.click()}
-              className="py-3 rounded-xl text-sm font-bold"
-              style={{ background: "rgba(18,16,13,0.05)", color: "rgba(18,16,13,0.7)" }}>
-              📷 Quét ảnh món ăn
-            </button>
-            <button type="button" onClick={startManual}
-              className="py-3 rounded-xl text-sm font-bold"
-              style={{ background: "rgba(18,16,13,0.05)", color: "rgba(18,16,13,0.7)" }}>
-              ✏️ Thêm thủ công
-            </button>
-          </div>
+          <button type="button" onClick={startManual}
+            className="py-3 rounded-xl text-sm font-bold"
+            style={{ background: "rgba(18,16,13,0.05)", color: "rgba(18,16,13,0.7)" }}>
+            ✏️ Thêm thủ công
+          </button>
           <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={onPickPhoto} />
         </div>
       )}
@@ -408,7 +397,7 @@ export default function FoodLogTracker({
               )}
 
               {/* Tìm món trong thư viện CSDL — chọn để tự điền & quy đổi macro theo gram */}
-              {draft.source === "library" && (
+              {draft.source === "manual" && (
                 <div className="space-y-2">
                   <div className="relative">
                     <input className="dp-input w-full" placeholder="Tìm món trong thư viện…" value={draft.query}
