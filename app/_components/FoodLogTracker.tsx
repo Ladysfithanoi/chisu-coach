@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { compressImage } from "@/lib/compress";
 import { photoSrc } from "@/lib/photo";
+import { FOODS, type FoodItem } from "@/lib/foods-data";
 
 export type FoodLog = {
   id: string;
@@ -41,9 +42,9 @@ function addDays(dateStr: string, n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-// Bản nháp món đang thêm (từ ảnh quét AI hoặc nhập tay).
+// Bản nháp món đang thêm (từ ảnh quét AI, chọn từ thư viện, hoặc nhập tay).
 type Draft = {
-  source: "photo" | "manual";
+  source: "photo" | "manual" | "library";
   imageBase64?: string;
   mimeType?: string;
   preview?: string;
@@ -57,6 +58,10 @@ type Draft = {
   protein: string;
   fat: string;
   carbs: string;
+  // Chế độ thư viện: ô tìm kiếm + món đã chọn + khối lượng để quy đổi macro.
+  query: string;
+  selectedFood: FoodItem | null;
+  grams: string;
 };
 
 const EMPTY_DRAFT: Omit<Draft, "source"> = {
@@ -68,7 +73,36 @@ const EMPTY_DRAFT: Omit<Draft, "source"> = {
   protein: "",
   fat: "",
   carbs: "",
+  query: "",
+  selectedFood: null,
+  grams: "100",
 };
+
+// Tìm món trong CSDL app — khớp tên tiếng Việt/Anh, ưu tiên khớp đầu chuỗi.
+function searchFoods(query: string): FoodItem[] {
+  const q = query.toLowerCase().trim();
+  if (!q) return [];
+  return FOODS.filter(
+    (f) => f.name.toLowerCase().includes(q) || (f.nameEn ?? "").toLowerCase().includes(q)
+  )
+    .sort((a, b) => {
+      const aS = a.name.toLowerCase().startsWith(q) || (a.nameEn ?? "").toLowerCase().startsWith(q);
+      const bS = b.name.toLowerCase().startsWith(q) || (b.nameEn ?? "").toLowerCase().startsWith(q);
+      return aS === bS ? 0 : aS ? -1 : 1;
+    })
+    .slice(0, 8);
+}
+
+// Macro của CSDL lưu theo 100g — quy đổi theo khối lượng thực tế.
+function scaleFood(food: FoodItem, grams: number) {
+  const r = grams / 100;
+  return {
+    calories: Math.round(food.calories * r),
+    protein: Math.round(food.protein * r),
+    fat: Math.round(food.fat * r),
+    carbs: Math.round(food.carbs * r),
+  };
+}
 
 export default function FoodLogTracker({
   studentId,
@@ -172,8 +206,49 @@ export default function FoodLogTracker({
     setDraft({ source: "manual", ...EMPTY_DRAFT });
   }
 
+  function startLibrary() {
+    setDraft({ source: "library", ...EMPTY_DRAFT });
+  }
+
   function setField(field: keyof Draft, value: string) {
     setDraft((d) => (d ? { ...d, [field]: value } : d));
+  }
+
+  // Chọn 1 món từ thư viện: tự điền tên + quy đổi macro theo gram hiện tại.
+  function pickFood(food: FoodItem) {
+    setDraft((d) => {
+      if (!d) return d;
+      const g = numOr0(d.grams) || 100;
+      const m = scaleFood(food, g);
+      return {
+        ...d,
+        selectedFood: food,
+        query: food.name,
+        name: food.name,
+        grams: String(g),
+        calories: String(m.calories),
+        protein: String(m.protein),
+        fat: String(m.fat),
+        carbs: String(m.carbs),
+      };
+    });
+  }
+
+  // Đổi khối lượng → tính lại macro theo món đã chọn.
+  function setGrams(value: string) {
+    setDraft((d) => {
+      if (!d) return d;
+      if (!d.selectedFood) return { ...d, grams: value };
+      const m = scaleFood(d.selectedFood, numOr0(value));
+      return {
+        ...d,
+        grams: value,
+        calories: String(m.calories),
+        protein: String(m.protein),
+        fat: String(m.fat),
+        carbs: String(m.carbs),
+      };
+    });
   }
 
   async function saveDraft() {
@@ -295,16 +370,23 @@ export default function FoodLogTracker({
 
       {/* Nút thêm món */}
       {!draft && !readOnly && (
-        <div className="grid grid-cols-2 gap-3">
-          <button type="button" onClick={() => fileRef.current?.click()}
-            className="py-3 rounded-xl text-sm font-bold text-white" style={{ background: "#eb0915" }}>
-            📷 Quét ảnh món ăn
+        <div className="space-y-3">
+          <button type="button" onClick={startLibrary}
+            className="w-full py-3 rounded-xl text-sm font-bold text-white" style={{ background: "#eb0915" }}>
+            🔍 Chọn từ thư viện món
           </button>
-          <button type="button" onClick={startManual}
-            className="py-3 rounded-xl text-sm font-bold"
-            style={{ background: "rgba(18,16,13,0.05)", color: "rgba(18,16,13,0.7)" }}>
-            ✏️ Thêm thủ công
-          </button>
+          <div className="grid grid-cols-2 gap-3">
+            <button type="button" onClick={() => fileRef.current?.click()}
+              className="py-3 rounded-xl text-sm font-bold"
+              style={{ background: "rgba(18,16,13,0.05)", color: "rgba(18,16,13,0.7)" }}>
+              📷 Quét ảnh món ăn
+            </button>
+            <button type="button" onClick={startManual}
+              className="py-3 rounded-xl text-sm font-bold"
+              style={{ background: "rgba(18,16,13,0.05)", color: "rgba(18,16,13,0.7)" }}>
+              ✏️ Thêm thủ công
+            </button>
+          </div>
           <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={onPickPhoto} />
         </div>
       )}
@@ -324,6 +406,41 @@ export default function FoodLogTracker({
               {draft.confidence && (
                 <p className="text-xs" style={{ color: "rgba(18,16,13,0.4)" }}>Độ tin cậy AI: {draft.confidence} — chỉnh lại nếu cần</p>
               )}
+
+              {/* Tìm món trong thư viện CSDL — chọn để tự điền & quy đổi macro theo gram */}
+              {draft.source === "library" && (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <input className="dp-input w-full" placeholder="Tìm món trong thư viện…" value={draft.query}
+                      onChange={(e) => setField("query", e.target.value)} autoFocus />
+                    {draft.query.trim() && (!draft.selectedFood || draft.query !== draft.selectedFood.name) && (
+                      <div className="absolute left-0 right-0 mt-1 z-10 bg-white rounded-xl overflow-hidden shadow-lg"
+                        style={{ border: "1px solid rgba(18,16,13,0.12)" }}>
+                        {searchFoods(draft.query).length === 0 ? (
+                          <p className="text-xs px-3 py-2.5" style={{ color: "rgba(18,16,13,0.4)" }}>Không tìm thấy món phù hợp</p>
+                        ) : (
+                          searchFoods(draft.query).map((f) => (
+                            <button key={f.name} type="button" onClick={() => pickFood(f)}
+                              className="btn-flat w-full text-left px-3 py-2 flex items-center justify-between gap-2"
+                              style={{ borderBottom: "1px solid rgba(18,16,13,0.05)" }}>
+                              <span className="text-sm font-semibold truncate" style={{ color: "#12100d" }}>{f.name}</span>
+                              <span className="text-xs shrink-0" style={{ color: "rgba(18,16,13,0.4)" }}>{f.calories} kcal/100g</span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {draft.selectedFood && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs shrink-0" style={{ color: "rgba(18,16,13,0.5)" }}>Khối lượng (g)</span>
+                      <input type="number" inputMode="numeric" className="dp-input flex-1 text-center" value={draft.grams}
+                        onChange={(e) => setGrams(e.target.value)} />
+                    </div>
+                  )}
+                </div>
+              )}
+
               <input className="dp-input w-full" placeholder="Tên món" value={draft.name}
                 onChange={(e) => setField("name", e.target.value)} />
               <input className="dp-input w-full" placeholder="Bữa (sáng/trưa/tối…) — tuỳ chọn" value={draft.mealLabel}
