@@ -193,6 +193,100 @@ function EditModal({ user, onClose, onSaved }: EditModalProps) {
   );
 }
 
+// ─── Delete Confirm Modal ─────────────────────────────────────────────────────
+
+interface DeleteModalProps {
+  user: User;
+  onClose: () => void;
+  onDeleted: (userId: string) => void;
+}
+
+function DeleteModal({ user, onClose, onDeleted }: DeleteModalProps) {
+  const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleConfirm() {
+    if (deleting) return;
+    setDeleting(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, { method: "DELETE" });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok) { setError(data.error ?? "Không thể xóa tài khoản"); return; }
+      onDeleted(user.id);
+    } catch {
+      setError("Lỗi kết nối, vui lòng thử lại");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{ background: "rgba(18,16,13,0.5)" }}
+      onClick={(e) => { if (e.target === e.currentTarget && !deleting) onClose(); }}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl p-6 shadow-2xl"
+        style={{ background: "white", border: "1px solid rgba(18,16,13,0.08)" }}
+      >
+        <div
+          className="w-12 h-12 rounded-full flex items-center justify-center mb-4"
+          style={{ background: "rgba(235,9,21,0.1)" }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#eb0915" strokeWidth="2">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            <line x1="10" y1="11" x2="10" y2="17"/>
+            <line x1="14" y1="11" x2="14" y2="17"/>
+          </svg>
+        </div>
+        <h3 className="text-base font-bold mb-1" style={{ color: "#12100d" }}>Xóa tài khoản?</h3>
+        <p className="text-sm mb-5" style={{ color: "rgba(18,16,13,0.6)" }}>
+          Bạn sắp xóa <span className="font-bold" style={{ color: "#12100d" }}>{user.name}</span>
+          <span style={{ color: "rgba(18,16,13,0.45)" }}> ({user.role})</span>.
+          Hành động này <span className="font-semibold" style={{ color: "#eb0915" }}>không thể hoàn tác</span>.
+        </p>
+
+        {error && <div className="mb-4"><ErrorBox msg={error} /></div>}
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={deleting}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
+            style={{ border: "1px solid rgba(18,16,13,0.12)", color: "rgba(18,16,13,0.6)", background: "transparent", opacity: deleting ? 0.6 : 1 }}
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={deleting}
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
+            style={{
+              background: deleting ? "rgba(235,9,21,0.55)" : "#eb0915",
+              color: "white",
+              cursor: deleting ? "not-allowed" : "pointer",
+            }}
+          >
+            {deleting ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" strokeLinecap="round"/>
+                </svg>
+                Đang xóa...
+              </span>
+            ) : "Xóa tài khoản"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function AdminUsersClient({ initialUsers }: Props) {
@@ -216,8 +310,8 @@ export default function AdminUsersClient({ initialUsers }: Props) {
   const [formSuccess, setFormSuccess] = useState("");
   const [creating, setCreating] = useState(false);
 
-  // Delete state
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Delete confirm modal state (thay cho confirm()/alert() mặc định của trình duyệt)
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
 
   // Edit modal state
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -257,29 +351,17 @@ export default function AdminUsersClient({ initialUsers }: Props) {
     }
   }
 
-  async function handleDelete(userId: string, userName: string) {
-    if (!confirm(`Xóa tài khoản "${userName}"? Hành động này không thể hoàn tác.`)) return;
-    setDeletingId(userId);
-
-    try {
-      const res = await fetch(`/api/admin/users/${userId}`, { method: "DELETE" });
-      const data = await res.json() as { ok?: boolean; error?: string };
-
-      if (!res.ok) { alert(data.error ?? "Không thể xóa tài khoản"); return; }
-      setUsers((prev) => {
-        const next = prev.filter((u) => u.id !== userId);
-        // Nếu trang hiện tại vượt quá tổng trang mới → lùi 1 trang
-        const newTotalPages = Math.ceil(next.length / pageSize);
-        if (currentPage > newTotalPages && newTotalPages > 0) {
-          setCurrentPage(newTotalPages);
-        }
-        return next;
-      });
-    } catch {
-      alert("Lỗi kết nối, vui lòng thử lại");
-    } finally {
-      setDeletingId(null);
-    }
+  function handleUserDeleted(userId: string) {
+    setUsers((prev) => {
+      const next = prev.filter((u) => u.id !== userId);
+      // Nếu trang hiện tại vượt quá tổng trang mới → lùi 1 trang
+      const newTotalPages = Math.ceil(next.length / pageSize);
+      if (currentPage > newTotalPages && newTotalPages > 0) {
+        setCurrentPage(newTotalPages);
+      }
+      return next;
+    });
+    setDeleteTarget(null);
   }
 
   function handleUserSaved(updated: User) {
@@ -296,6 +378,15 @@ export default function AdminUsersClient({ initialUsers }: Props) {
           user={editingUser}
           onClose={() => setEditingUser(null)}
           onSaved={handleUserSaved}
+        />
+      )}
+
+      {/* Delete Confirm Modal */}
+      {deleteTarget && (
+        <DeleteModal
+          user={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={handleUserDeleted}
         />
       )}
 
@@ -508,17 +599,16 @@ export default function AdminUsersClient({ initialUsers }: Props) {
                                   Sửa
                                 </button>
                                 <button
-                                  onClick={() => handleDelete(user.id, user.name)}
-                                  disabled={deletingId === user.id}
+                                  onClick={() => setDeleteTarget(user)}
                                   className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
                                   style={{
-                                    color: deletingId === user.id ? "rgba(18,16,13,0.3)" : "#eb0915",
-                                    border: `1px solid ${deletingId === user.id ? "rgba(18,16,13,0.1)" : "rgba(235,9,21,0.25)"}`,
-                                    background: deletingId === user.id ? "transparent" : "rgba(235,9,21,0.04)",
-                                    cursor: deletingId === user.id ? "not-allowed" : "pointer",
+                                    color: "#eb0915",
+                                    border: "1px solid rgba(235,9,21,0.25)",
+                                    background: "rgba(235,9,21,0.04)",
+                                    cursor: "pointer",
                                   }}
                                 >
-                                  {deletingId === user.id ? "Đang xóa..." : "Xóa"}
+                                  Xóa
                                 </button>
                               </div>
                             </td>
