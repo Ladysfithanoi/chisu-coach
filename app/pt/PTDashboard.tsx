@@ -48,7 +48,10 @@ export default function PTDashboard({
   const [ePassword, setEPassword] = useState("");
   const [editError, setEditError] = useState("");
   const [editSaving, setEditSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Modal xác nhận xoá học viên (thay cho window.confirm mặc định của trình duyệt)
+  const [deleteTarget, setDeleteTarget] = useState<StudentRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Tìm kiếm + phân trang
   const PAGE_SIZE = 5;
@@ -108,15 +111,15 @@ export default function PTDashboard({
     }
   }
 
-  async function handleDelete(s: StudentRow) {
-    if (deletingId) return;
-    if (!window.confirm(`Xóa học viên "${s.name}"? Thực đơn đã gán cũng sẽ bị xóa và không thể hoàn tác.`)) return;
-    setDeletingId(s.id);
+  async function confirmDelete() {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
     try {
-      const res = await fetch(`/api/pt/students/${s.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/pt/students/${deleteTarget.id}`, { method: "DELETE" });
       if (res.ok) await loadStudents();
+      setDeleteTarget(null);
     } finally {
-      setDeletingId(null);
+      setDeleting(false);
     }
   }
 
@@ -320,11 +323,10 @@ export default function PTDashboard({
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleDelete(s)}
-                    disabled={deletingId === s.id}
+                    onClick={() => setDeleteTarget(s)}
                     title="Xóa học viên"
                     className="w-8 h-8 flex items-center justify-center rounded-lg"
-                    style={{ color: "#eb0915", border: "1px solid rgba(235,9,21,0.2)", opacity: deletingId === s.id ? 0.5 : 1 }}
+                    style={{ color: "#eb0915", border: "1px solid rgba(235,9,21,0.2)" }}
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="3 6 5 6 21 6"/>
@@ -402,6 +404,45 @@ export default function PTDashboard({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal xác nhận xoá học viên ── */}
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background: "rgba(18,16,13,0.5)" }}
+          onClick={(e) => { if (e.target === e.currentTarget && !deleting) setDeleteTarget(null); }}
+        >
+          <div className="w-full max-w-sm rounded-2xl p-6 shadow-2xl"
+            style={{ background: "white", border: "1px solid rgba(18,16,13,0.08)" }}>
+            <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4"
+              style={{ background: "rgba(235,9,21,0.1)" }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#eb0915" strokeWidth="2">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                <line x1="10" y1="11" x2="10" y2="17"/>
+                <line x1="14" y1="11" x2="14" y2="17"/>
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold mb-1" style={{ color: "#12100d" }}>Xoá học viên?</h3>
+            <p className="text-sm mb-5" style={{ color: "rgba(18,16,13,0.6)" }}>
+              Bạn sắp xoá <span className="font-bold" style={{ color: "#12100d" }}>{deleteTarget.name}</span>.
+              Toàn bộ thực đơn, nhật ký, cân nặng và ảnh đã gán cũng sẽ bị xoá và <span className="font-semibold" style={{ color: "#eb0915" }}>không thể hoàn tác</span>.
+            </p>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setDeleteTarget(null)} disabled={deleting}
+                className="flex-1 py-2.5 rounded-xl font-semibold text-sm"
+                style={{ background: "rgba(18,16,13,0.05)", color: "rgba(18,16,13,0.7)", opacity: deleting ? 0.6 : 1 }}>
+                Huỷ
+              </button>
+              <button type="button" onClick={confirmDelete} disabled={deleting}
+                className="flex-1 py-2.5 rounded-xl font-bold text-sm"
+                style={{ background: "#eb0915", color: "#fff", opacity: deleting ? 0.6 : 1 }}>
+                {deleting ? "Đang xoá..." : "Xoá học viên"}
+              </button>
+            </div>
           </div>
         </div>
       )}
