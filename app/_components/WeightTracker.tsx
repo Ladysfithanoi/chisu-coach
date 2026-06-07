@@ -63,8 +63,20 @@ export default function WeightTracker({
 
   const savedForInput = byDate.get(inputDate);
   const weightValue = inputWeight !== undefined ? inputWeight : (savedForInput ? String(savedForInput.weightKg) : "");
-  // Không cho nhảy tới tuần tương lai
-  const nextWeekDisabled = weekStart >= weekStartOf(today);
+
+  // Danh sách ngày đã cân (tăng dần) để nút ← → nhảy thẳng tới ngày cân trước/kế tiếp,
+  // bỏ qua ngày/tuần trống → luôn hiển thị đúng ngày cân + cân tương ứng.
+  const sortedDates = useMemo(() => entries.map((e) => e.date).sort(), [entries]);
+  // Ngày cân gần nhất TRƯỚC ngày đang chọn (null nếu không còn)
+  const prevWeighIn = useMemo(() => {
+    for (let i = sortedDates.length - 1; i >= 0; i--) if (sortedDates[i] < inputDate) return sortedDates[i];
+    return null;
+  }, [sortedDates, inputDate]);
+  // Ngày cân gần nhất SAU ngày đang chọn; nếu không còn nhưng chưa tới hôm nay → về hôm nay (để ghi cân mới)
+  const nextWeighIn = useMemo(() => {
+    for (let i = 0; i < sortedDates.length; i++) if (sortedDates[i] > inputDate) return sortedDates[i];
+    return inputDate < today ? today : null;
+  }, [sortedDates, inputDate, today]);
 
   // Bảng chi tiết: mới nhất lên đầu, tối đa 10 ngày/trang
   const TABLE_PAGE_SIZE = 10;
@@ -79,23 +91,6 @@ export default function WeightTracker({
     setInputDate(date);
     setInputWeight(undefined);
     setStatus(null);
-  }
-
-  // Lật tuần: nếu tuần đích có cân nặng → chọn ngày cân gần nhất trong tuần đó
-  // (để hiện đúng ngày cân + cân tương ứng), nếu trống thì giữ nguyên thứ trong tuần.
-  function shiftWeek(deltaWeeks: number) {
-    const targetWeekStart = addDays(weekStart, deltaWeeks * 7);
-    if (targetWeekStart > weekStartOf(today)) return; // không sang tuần tương lai
-    const inWeek = entries
-      .filter((e) => weekStartOf(e.date) === targetWeekStart)
-      .map((e) => e.date)
-      .sort();
-    if (inWeek.length > 0) {
-      changeDate(inWeek[inWeek.length - 1]);
-      return;
-    }
-    const sameDow = addDays(inputDate, deltaWeeks * 7);
-    changeDate(sameDow > today ? today : sameDow);
   }
 
   async function commit() {
@@ -177,20 +172,23 @@ export default function WeightTracker({
 
       {/* Xem theo tuần + nhập 1 ngày */}
       <div className="bg-white rounded-2xl p-4 shadow-sm" style={{ border: "1px solid rgba(18,16,13,0.1)" }}>
-        {/* Điều hướng tuần — lật về các tuần trước để xem */}
+        {/* Điều hướng — nhảy tới ngày cân trước/kế tiếp (bỏ qua ngày trống) */}
         <div className="flex items-center justify-between mb-4">
-          <button type="button" onClick={() => shiftWeek(-1)}
+          <button type="button" onClick={() => prevWeighIn && changeDate(prevWeighIn)}
+            disabled={!prevWeighIn}
+            title="Ngày cân trước đó"
             className="px-2.5 py-1 rounded-lg text-sm font-semibold"
-            style={{ border: "1px solid rgba(18,16,13,0.12)", color: "rgba(18,16,13,0.6)" }}>
+            style={{ border: "1px solid rgba(18,16,13,0.12)", color: "rgba(18,16,13,0.6)", opacity: prevWeighIn ? 1 : 0.4 }}>
             ←
           </button>
           <span className="text-sm font-bold" style={{ color: "#12100d" }}>
             Tuần {fmtDM(weekStart)} – {fmtDM(addDays(weekStart, 6))}
           </span>
-          <button type="button" onClick={() => shiftWeek(1)}
-            disabled={nextWeekDisabled}
+          <button type="button" onClick={() => nextWeighIn && changeDate(nextWeighIn)}
+            disabled={!nextWeighIn}
+            title="Ngày cân kế tiếp"
             className="px-2.5 py-1 rounded-lg text-sm font-semibold"
-            style={{ border: "1px solid rgba(18,16,13,0.12)", color: "rgba(18,16,13,0.6)", opacity: nextWeekDisabled ? 0.4 : 1 }}>
+            style={{ border: "1px solid rgba(18,16,13,0.12)", color: "rgba(18,16,13,0.6)", opacity: nextWeighIn ? 1 : 0.4 }}>
             →
           </button>
         </div>
