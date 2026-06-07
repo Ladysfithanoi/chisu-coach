@@ -16,6 +16,7 @@ export async function GET() {
       id: true,
       name: true,
       email: true,
+      medicalConditions: true,
       createdAt: true,
       mealPlans: {
         where: { isActive: true, source: "PT" },
@@ -37,8 +38,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = (await req.json()) as { name?: string; email?: string; password?: string };
-    const { name, email, password } = body;
+    const body = (await req.json()) as { name?: string; email?: string; password?: string; medicalConditions?: string };
+    const { name, email, password, medicalConditions } = body;
 
     if (!name?.trim() || !email?.trim() || !password?.trim()) {
       return NextResponse.json({ error: "Vui lòng điền đầy đủ thông tin" }, { status: 400 });
@@ -62,8 +63,9 @@ export async function POST(req: NextRequest) {
         password: hashedPassword,
         role: "STUDENT",
         ptId: auth.user.id,
+        medicalConditions: medicalConditions?.trim() || null,
       },
-      select: { id: true, name: true, email: true, createdAt: true },
+      select: { id: true, name: true, email: true, medicalConditions: true, createdAt: true },
     });
 
     return NextResponse.json({ ok: true, student });

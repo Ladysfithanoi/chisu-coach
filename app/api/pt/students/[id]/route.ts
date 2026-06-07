@@ -28,8 +28,8 @@ export async function PUT(
   }
 
   try {
-    const body = (await req.json()) as { name?: string; email?: string; password?: string };
-    const { name, email, password } = body;
+    const body = (await req.json()) as { name?: string; email?: string; password?: string; medicalConditions?: string };
+    const { name, email, password, medicalConditions } = body;
 
     if (!name?.trim() || !email?.trim()) {
       return NextResponse.json({ error: "Họ tên và email không được để trống" }, { status: 400 });
@@ -42,10 +42,11 @@ export async function PUT(
       return NextResponse.json({ error: "Email này đã được sử dụng bởi tài khoản khác" }, { status: 400 });
     }
 
-    const updateData: { name: string; email: string; currentSessionToken: null; password?: string } = {
+    const updateData: { name: string; email: string; currentSessionToken: null; medicalConditions: string | null; password?: string } = {
       name: name.trim(),
       email: email.toLowerCase().trim(),
       currentSessionToken: null,
+      medicalConditions: medicalConditions?.trim() || null,
     };
 
     if (password && password.trim().length > 0) {
@@ -58,7 +59,7 @@ export async function PUT(
     const updated = await prisma.user.update({
       where: { id },
       data: updateData,
-      select: { id: true, name: true, email: true, createdAt: true },
+      select: { id: true, name: true, email: true, medicalConditions: true, createdAt: true },
     });
 
     return NextResponse.json({

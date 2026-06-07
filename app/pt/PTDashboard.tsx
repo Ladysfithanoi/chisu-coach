@@ -12,6 +12,7 @@ export interface StudentRow {
   id: string;
   name: string;
   email: string;
+  medicalConditions: string | null;
   createdAt: string;
   mealPlans: { id: string; label: string | null; calories: number; updatedAt: string }[];
 }
@@ -34,6 +35,7 @@ export default function PTDashboard({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [medical, setMedical] = useState("");
   const [addError, setAddError] = useState("");
   const [adding, setAdding] = useState(false);
 
@@ -41,6 +43,7 @@ export default function PTDashboard({
   const [editing, setEditing] = useState<StudentRow | null>(null);
   const [eName, setEName] = useState("");
   const [eEmail, setEEmail] = useState("");
+  const [eMedical, setEMedical] = useState("");
   const [ePassword, setEPassword] = useState("");
   const [editError, setEditError] = useState("");
   const [editSaving, setEditSaving] = useState(false);
@@ -66,11 +69,11 @@ export default function PTDashboard({
       const res = await fetch("/api/pt/students", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, medicalConditions: medical }),
       });
       const data = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok) { setAddError(data.error ?? "Tạo thất bại"); return; }
-      setName(""); setEmail(""); setPassword(""); setShowAdd(false);
+      setName(""); setEmail(""); setPassword(""); setMedical(""); setShowAdd(false);
       await loadStudents();
     } catch {
       setAddError("Lỗi kết nối, vui lòng thử lại");
@@ -80,7 +83,7 @@ export default function PTDashboard({
   }
 
   function openEdit(s: StudentRow) {
-    setEditing(s); setEName(s.name); setEEmail(s.email); setEPassword(""); setEditError("");
+    setEditing(s); setEName(s.name); setEEmail(s.email); setEMedical(s.medicalConditions ?? ""); setEPassword(""); setEditError("");
   }
 
   async function handleEditSave(e: React.FormEvent) {
@@ -91,7 +94,7 @@ export default function PTDashboard({
       const res = await fetch(`/api/pt/students/${editing.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: eName, email: eEmail, password: ePassword }),
+        body: JSON.stringify({ name: eName, email: eEmail, password: ePassword, medicalConditions: eMedical }),
       });
       const data = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok) { setEditError(data.error ?? "Lưu thất bại"); return; }
@@ -159,6 +162,15 @@ export default function PTDashboard({
               Hồ sơ <span style={{ color: "#eb0915" }}>{selected.name}</span>
             </h1>
             <p className="text-sm" style={{ color: "rgba(18,16,13,0.5)" }}>{selected.email}</p>
+            {selected.medicalConditions?.trim() && (
+              <div
+                className="mt-3 rounded-xl px-3 py-2 text-sm"
+                style={{ background: "rgba(235,9,21,0.06)", border: "1px solid rgba(235,9,21,0.18)", color: "#12100d" }}
+              >
+                <span className="font-semibold" style={{ color: "#eb0915" }}>Bệnh lý: </span>
+                <span style={{ whiteSpace: "pre-wrap" }}>{selected.medicalConditions}</span>
+              </div>
+            )}
           </div>
 
           {/* Tabs hồ sơ */}
@@ -235,6 +247,13 @@ export default function PTDashboard({
             <input className="dp-input" placeholder="Họ và tên" value={name} onChange={(e) => setName(e.target.value)} required />
             <input className="dp-input" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             <input className="dp-input" type="password" placeholder="Mật khẩu (≥ 6 ký tự)" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <textarea
+              className="dp-input"
+              rows={3}
+              placeholder="Bệnh lý / tiền sử bệnh (nếu có) — vd: tiểu đường, cao huyết áp, dị ứng hải sản..."
+              value={medical}
+              onChange={(e) => setMedical(e.target.value)}
+            />
             {addError && <p className="dp-error-msg">{addError}</p>}
             <button
               type="submit" disabled={adding}
@@ -358,6 +377,13 @@ export default function PTDashboard({
             <form onSubmit={handleEditSave} className="space-y-3">
               <input className="dp-input" placeholder="Họ và tên" value={eName} onChange={(e) => { setEName(e.target.value); setEditError(""); }} required />
               <input className="dp-input" type="email" placeholder="Email" value={eEmail} onChange={(e) => { setEEmail(e.target.value); setEditError(""); }} required />
+              <textarea
+                className="dp-input"
+                rows={3}
+                placeholder="Bệnh lý / tiền sử bệnh (nếu có)"
+                value={eMedical}
+                onChange={(e) => { setEMedical(e.target.value); setEditError(""); }}
+              />
               <input className="dp-input" type="password" placeholder="Mật khẩu mới (để trống nếu không đổi)" value={ePassword} onChange={(e) => { setEPassword(e.target.value); setEditError(""); }} />
               {editError && <p className="dp-error-msg">{editError}</p>}
               <div className="flex gap-2 pt-1">

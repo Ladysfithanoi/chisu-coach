@@ -15,6 +15,7 @@ export default async function PTPage() {
       id: true,
       name: true,
       email: true,
+      medicalConditions: true,
       createdAt: true,
       mealPlans: {
         where: { isActive: true, source: "PT" },
@@ -29,6 +30,7 @@ export default async function PTPage() {
     id: s.id,
     name: s.name,
     email: s.email,
+    medicalConditions: s.medicalConditions,
     createdAt: s.createdAt.toISOString(),
     mealPlans: s.mealPlans.map((p) => ({
       id: p.id,

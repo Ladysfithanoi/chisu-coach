@@ -244,6 +244,12 @@ export default function DietForm({
           manualFoodsJson: planMeals?.manualFoods ?? null,
         }),
       });
+      // Phiên đã bị đăng nhập ở nơi khác (single-session) → token cũ hết hiệu lực.
+      // Báo rõ và đưa về đăng nhập thay vì hiện "không có quyền" khó hiểu trên nút giao thực đơn.
+      if (res.status === 401) {
+        window.location.assign("/login?kicked=1");
+        return;
+      }
       const data = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok) {
         setSaveMsg({ ok: false, text: data.error ?? "Lưu thất bại" });
