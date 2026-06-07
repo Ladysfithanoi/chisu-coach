@@ -223,6 +223,51 @@ function formFromNutrition(prev: FormState, nj: Record<string, unknown>): FormSt
   };
 }
 
+function num(v: unknown): number {
+  const n = Number(v);
+  return isNaN(n) ? 0 : n;
+}
+
+function numOrNull(v: unknown): number | null {
+  if (v == null) return null;
+  const n = Number(v);
+  return isNaN(n) ? null : n;
+}
+
+// Dựng lại kết quả tính (NutritionResult) từ nutritionJson đã lưu để hiện ngay
+// thẻ Calories/Macro khi mở lại hồ sơ, không cần bấm "Tính toán" lần nữa.
+function resultFromNutrition(nj: Record<string, unknown>): NutritionResult | null {
+  if (nj.height == null || nj.weight == null || nj.age == null) return null;
+  return {
+    name: typeof nj.name === "string" ? nj.name : "",
+    gender: pick(nj.gender, ["male", "female"] as Gender[], "male"),
+    height: num(nj.height),
+    weight: num(nj.weight),
+    age: num(nj.age),
+    likes: typeof nj.likes === "string" ? nj.likes : "",
+    dislikes: typeof nj.dislikes === "string" ? nj.dislikes : "",
+    bmrFormula: pick(nj.bmrFormula, Object.keys(FORMULA_LABEL) as BmrFormula[], "mifflin"),
+    activityLevel: pick(nj.activityLevel, Object.keys(ACTIVITY_LABEL) as ActivityLevel[], "level1"),
+    weightGoal: pick(nj.weightGoal, ["lose", "gain", "maintain"] as WeightGoal[], "lose"),
+    bmr: num(nj.bmr),
+    tdee: num(nj.tdee),
+    der: num(nj.der),
+    protein: num(nj.protein),
+    fat: num(nj.fat),
+    carbs: num(nj.carbs),
+    weeklyLoss: numOrNull(nj.weeklyLoss),
+    totalToLose: numOrNull(nj.totalToLose),
+    weeksToGoal: numOrNull(nj.weeksToGoal),
+    daysToGoal: numOrNull(nj.daysToGoal),
+    monthsToGoal: numOrNull(nj.monthsToGoal),
+    weeklyGain: numOrNull(nj.weeklyGain),
+    totalToGain: numOrNull(nj.totalToGain),
+    weeksToGainGoal: numOrNull(nj.weeksToGainGoal),
+    daysToGainGoal: numOrNull(nj.daysToGainGoal),
+    monthsToGainGoal: numOrNull(nj.monthsToGainGoal),
+  };
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export type DietFormMode = "standalone" | "pt-assign" | "self";
@@ -242,32 +287,6 @@ export default function DietForm({
 }) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
-
-  // Nạp sẵn "Thông tin khách hàng" từ thực đơn active gần nhất (giao diện PT) để
-  // PT không phải nhập lại mỗi lần mở hồ sơ. Giữ nguyên đến khi PT lưu thực đơn mới.
-  useEffect(() => {
-    if (mode !== "pt-assign" || !assignStudent?.id) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(`/api/pt/plans?studentId=${assignStudent.id}`);
-        if (res.status === 401) {
-          window.location.assign("/login?kicked=1");
-          return;
-        }
-        if (!res.ok) return;
-        const data = (await res.json()) as { plan?: { nutritionJson?: unknown } | null };
-        const nj = data.plan?.nutritionJson;
-        if (cancelled || !nj || typeof nj !== "object") return;
-        setForm((prev) => formFromNutrition(prev, nj as Record<string, unknown>));
-      } catch {
-        // Lỗi mạng → giữ form trống, PT nhập tay như cũ
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [mode, assignStudent?.id]);
 
   // Thực đơn hiện tại (nâng lên từ MealPlanSection) + trạng thái lưu
   const [planMeals, setPlanMeals] = useState<PlanMealsData | null>(null);
@@ -354,6 +373,36 @@ export default function DietForm({
       setMacroAlert("");
     }
   }, [result]);
+
+  // Nạp sẵn "Thông tin khách hàng" + kết quả tính (Calories/Macro) từ thực đơn
+  // active gần nhất (giao diện PT) để PT không phải nhập & tính lại mỗi lần mở hồ sơ.
+  // Giữ nguyên đến khi PT lưu thực đơn mới. Set result → effect trên tự khôi phục macro.
+  useEffect(() => {
+    if (mode !== "pt-assign" || !assignStudent?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/pt/plans?studentId=${assignStudent.id}`);
+        if (res.status === 401) {
+          window.location.assign("/login?kicked=1");
+          return;
+        }
+        if (!res.ok) return;
+        const data = (await res.json()) as { plan?: { nutritionJson?: unknown } | null };
+        const nj = data.plan?.nutritionJson;
+        if (cancelled || !nj || typeof nj !== "object") return;
+        const njObj = nj as Record<string, unknown>;
+        setForm((prev) => formFromNutrition(prev, njObj));
+        const restored = resultFromNutrition(njObj);
+        if (restored) setResult(restored);
+      } catch {
+        // Lỗi mạng → giữ form trống, PT nhập tay như cũ
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, assignStudent?.id]);
 
   // Change-password modal state
   const [showChangePwd, setShowChangePwd] = useState(false);
