@@ -193,6 +193,36 @@ const INITIAL_FORM: FormState = {
   goalInputValue: "",
 };
 
+// Chọn giá trị hợp lệ trong tập cho phép (dùng khi nạp lại form từ dữ liệu đã lưu)
+function pick<T extends string>(val: unknown, allowed: readonly T[], fallback: T): T {
+  return typeof val === "string" && (allowed as readonly string[]).includes(val)
+    ? (val as T)
+    : fallback;
+}
+
+// Dựng lại FormState từ nutritionJson đã lưu trong thực đơn (số → chuỗi cho input)
+function formFromNutrition(prev: FormState, nj: Record<string, unknown>): FormState {
+  return {
+    ...prev,
+    name: typeof nj.name === "string" ? nj.name : prev.name,
+    gender: pick(nj.gender, ["male", "female"] as Gender[], prev.gender),
+    height: nj.height != null ? String(nj.height) : prev.height,
+    weight: nj.weight != null ? String(nj.weight) : prev.weight,
+    age: nj.age != null ? String(nj.age) : prev.age,
+    likes: typeof nj.likes === "string" ? nj.likes : prev.likes,
+    dislikes: typeof nj.dislikes === "string" ? nj.dislikes : prev.dislikes,
+    bmrFormula: pick(nj.bmrFormula, Object.keys(FORMULA_LABEL) as BmrFormula[], prev.bmrFormula),
+    activityLevel: pick(nj.activityLevel, Object.keys(ACTIVITY_LABEL) as ActivityLevel[], prev.activityLevel),
+    weightGoal: pick(nj.weightGoal, ["lose", "gain", "maintain"] as WeightGoal[], prev.weightGoal),
+    goalInputMode: pick(
+      nj.goalInputMode,
+      ["target_weight", "kg_to_lose", "kg_to_gain"] as GoalInputMode[],
+      nj.weightGoal === "gain" ? "kg_to_gain" : "kg_to_lose"
+    ),
+    goalInputValue: nj.goalInputValue != null ? String(nj.goalInputValue) : prev.goalInputValue,
+  };
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export type DietFormMode = "standalone" | "pt-assign" | "self";
@@ -212,6 +242,32 @@ export default function DietForm({
 }) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
+
+  // Nạp sẵn "Thông tin khách hàng" từ thực đơn active gần nhất (giao diện PT) để
+  // PT không phải nhập lại mỗi lần mở hồ sơ. Giữ nguyên đến khi PT lưu thực đơn mới.
+  useEffect(() => {
+    if (mode !== "pt-assign" || !assignStudent?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/pt/plans?studentId=${assignStudent.id}`);
+        if (res.status === 401) {
+          window.location.assign("/login?kicked=1");
+          return;
+        }
+        if (!res.ok) return;
+        const data = (await res.json()) as { plan?: { nutritionJson?: unknown } | null };
+        const nj = data.plan?.nutritionJson;
+        if (cancelled || !nj || typeof nj !== "object") return;
+        setForm((prev) => formFromNutrition(prev, nj as Record<string, unknown>));
+      } catch {
+        // Lỗi mạng → giữ form trống, PT nhập tay như cũ
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, assignStudent?.id]);
 
   // Thực đơn hiện tại (nâng lên từ MealPlanSection) + trạng thái lưu
   const [planMeals, setPlanMeals] = useState<PlanMealsData | null>(null);
@@ -239,7 +295,16 @@ export default function DietForm({
           fat: macroF,
           carbs: macroC,
           mealCount: planMeals?.mealCount ?? 3,
-          nutritionJson: { ...result, protein: macroP, fat: macroF, carbs: macroC, der: liveDer },
+          nutritionJson: {
+            ...result,
+            protein: macroP,
+            fat: macroF,
+            carbs: macroC,
+            der: liveDer,
+            // Lưu thêm input lộ trình để lần sau nạp lại form thông tin khách hàng đầy đủ
+            goalInputMode: form.goalInputMode,
+            goalInputValue: form.goalInputValue,
+          },
           aiMealsJson: planMeals?.aiMeals ?? null,
           manualFoodsJson: planMeals?.manualFoods ?? null,
         }),
