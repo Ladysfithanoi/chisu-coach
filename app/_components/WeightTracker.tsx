@@ -24,6 +24,11 @@ function fmtDM(dateStr: string): string {
   return `${d}/${m}`;
 }
 
+function fmtFull(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-");
+  return `${d}/${m}/${y}`;
+}
+
 type RowStatus = "saving" | "saved" | "error";
 
 export default function WeightTracker({
@@ -36,6 +41,8 @@ export default function WeightTracker({
 }) {
   const [entries, setEntries] = useState<WeightPoint[]>(initialEntries);
   const [status, setStatus] = useState<RowStatus | null>(null);
+  // Modal bảng chi tiết các ngày + cân nặng (mở khi bấm vào biểu đồ)
+  const [showTable, setShowTable] = useState(false);
 
   const today = localToday();
 
@@ -124,12 +131,29 @@ export default function WeightTracker({
 
   return (
     <div className="space-y-6">
-      {/* Biểu đồ */}
+      {/* Biểu đồ — bấm vào để xem bảng chi tiết */}
       <div className="bg-white rounded-2xl p-4 shadow-sm" style={{ border: "1px solid rgba(18,16,13,0.1)" }}>
-        <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(18,16,13,0.35)" }}>
-          Biểu đồ cân nặng
-        </p>
-        <WeightChart points={chartPoints} />
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "rgba(18,16,13,0.35)" }}>
+            Biểu đồ cân nặng
+          </p>
+          {entries.length > 0 && (
+            <span className="text-xs font-medium" style={{ color: "#eb0915" }}>Bấm để xem bảng chi tiết</span>
+          )}
+        </div>
+        {entries.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setShowTable(true)}
+            className="btn-flat block w-full text-left"
+            title="Xem bảng cân nặng theo ngày"
+            style={{ cursor: "pointer" }}
+          >
+            <WeightChart points={chartPoints} />
+          </button>
+        ) : (
+          <WeightChart points={chartPoints} />
+        )}
       </div>
 
       {/* Xem theo tuần + nhập 1 ngày */}
@@ -204,6 +228,61 @@ export default function WeightTracker({
           <p className="text-sm mt-2 font-medium" style={{ color: "#eb0915" }}>! Cân nặng phải lớn hơn 0 và tối đa 500 kg, vui lòng thử lại</p>
         )}
       </div>
+
+      {/* ── Modal bảng chi tiết: ngày + cân nặng ── */}
+      {showTable && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background: "rgba(18,16,13,0.5)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowTable(false); }}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl shadow-2xl flex flex-col"
+            style={{ background: "white", border: "1px solid rgba(18,16,13,0.08)", maxHeight: "80vh" }}
+          >
+            <div className="flex items-center justify-between p-5 pb-3">
+              <h3 className="text-base font-bold" style={{ color: "#12100d" }}>
+                Bảng cân nặng theo ngày
+              </h3>
+              <button
+                onClick={() => setShowTable(false)}
+                className="w-7 h-7 flex items-center justify-center rounded-lg"
+                style={{ color: "rgba(18,16,13,0.4)", background: "rgba(18,16,13,0.05)" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto px-5 pb-5">
+              <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid rgba(18,16,13,0.1)" }}>
+                    <th className="text-left font-semibold py-2" style={{ color: "rgba(18,16,13,0.45)" }}>Ngày</th>
+                    <th className="text-right font-semibold py-2" style={{ color: "rgba(18,16,13,0.45)" }}>Cân nặng</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...entries].reverse().map((e) => (
+                    <tr key={e.date} style={{ borderBottom: "1px solid rgba(18,16,13,0.06)" }}>
+                      <td className="py-2.5">
+                        <span className="font-bold" style={{ color: e.date === today ? "#eb0915" : "#12100d" }}>
+                          {dowLabel(e.date)}
+                        </span>
+                        <span className="ml-2" style={{ color: "rgba(18,16,13,0.5)" }}>{fmtFull(e.date)}</span>
+                      </td>
+                      <td className="py-2.5 text-right font-bold" style={{ color: "#12100d" }}>
+                        {e.weightKg} kg
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
