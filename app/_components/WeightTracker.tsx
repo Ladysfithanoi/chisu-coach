@@ -43,6 +43,7 @@ export default function WeightTracker({
   const [status, setStatus] = useState<RowStatus | null>(null);
   // Modal bảng chi tiết các ngày + cân nặng (mở khi bấm vào biểu đồ)
   const [showTable, setShowTable] = useState(false);
+  const [tablePage, setTablePage] = useState(1);
 
   const today = localToday();
 
@@ -65,6 +66,13 @@ export default function WeightTracker({
   // Không cho nhảy tới tuần tương lai
   const nextWeekDisabled = weekStart >= weekStartOf(today);
 
+  // Bảng chi tiết: mới nhất lên đầu, tối đa 10 ngày/trang
+  const TABLE_PAGE_SIZE = 10;
+  const tableRows = [...entries].reverse();
+  const tableTotalPages = Math.max(1, Math.ceil(tableRows.length / TABLE_PAGE_SIZE));
+  const tableSafePage = Math.min(tablePage, tableTotalPages);
+  const tablePageRows = tableRows.slice((tableSafePage - 1) * TABLE_PAGE_SIZE, tableSafePage * TABLE_PAGE_SIZE);
+
   // Đổi ngày đang chọn → hiện lại cân nặng đã lưu (nếu có)
   function changeDate(date: string) {
     if (!date) return;
@@ -73,10 +81,21 @@ export default function WeightTracker({
     setStatus(null);
   }
 
-  // Lật tuần: dời ngày đang chọn ±7 (chặn vượt quá hôm nay)
+  // Lật tuần: nếu tuần đích có cân nặng → chọn ngày cân gần nhất trong tuần đó
+  // (để hiện đúng ngày cân + cân tương ứng), nếu trống thì giữ nguyên thứ trong tuần.
   function shiftWeek(deltaWeeks: number) {
-    const next = addDays(inputDate, deltaWeeks * 7);
-    changeDate(next > today ? today : next);
+    const targetWeekStart = addDays(weekStart, deltaWeeks * 7);
+    if (targetWeekStart > weekStartOf(today)) return; // không sang tuần tương lai
+    const inWeek = entries
+      .filter((e) => weekStartOf(e.date) === targetWeekStart)
+      .map((e) => e.date)
+      .sort();
+    if (inWeek.length > 0) {
+      changeDate(inWeek[inWeek.length - 1]);
+      return;
+    }
+    const sameDow = addDays(inputDate, deltaWeeks * 7);
+    changeDate(sameDow > today ? today : sameDow);
   }
 
   async function commit() {
@@ -144,8 +163,8 @@ export default function WeightTracker({
         {entries.length > 0 ? (
           <button
             type="button"
-            onClick={() => setShowTable(true)}
-            className="btn-flat block w-full text-left"
+            onClick={() => { setTablePage(1); setShowTable(true); }}
+            className="btn-flat block w-full text-left transition-colors"
             title="Xem bảng cân nặng theo ngày"
             style={{ cursor: "pointer" }}
           >
@@ -194,14 +213,26 @@ export default function WeightTracker({
 
         {/* Chọn ngày + nhập cân nặng + nút Lưu (đa nền tảng, không phụ thuộc auto-save) */}
         <div className="flex items-center gap-2">
-          <input
-            type="date"
-            max={today}
-            value={inputDate}
-            onChange={(e) => changeDate(e.target.value)}
-            className="dp-input"
-            style={{ width: "150px" }}
-          />
+          {/* Ô ngày: hiển thị dd/mm/yyyy (input type=date native không đổi được định
+              dạng) — phủ input trong suốt lên trên để mở lịch chọn ngày */}
+          <div className="relative shrink-0" style={{ width: "150px" }}>
+            <div className="dp-input flex items-center justify-between" style={{ pointerEvents: "none" }}>
+              <span style={{ color: "#12100d" }}>{fmtFull(inputDate)}</span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(18,16,13,0.45)" strokeWidth="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            </div>
+            <input
+              type="date"
+              max={today}
+              value={inputDate}
+              onChange={(e) => changeDate(e.target.value)}
+              onClick={(e) => { try { e.currentTarget.showPicker(); } catch { /* trình duyệt không hỗ trợ showPicker */ } }}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              aria-label="Chọn ngày cân"
+            />
+          </div>
           <input
             type="number" inputMode="decimal" step="0.1" placeholder="kg"
             value={weightValue}
@@ -255,7 +286,7 @@ export default function WeightTracker({
               </button>
             </div>
 
-            <div className="overflow-y-auto px-5 pb-5">
+            <div className="overflow-y-auto px-5 pb-3">
               <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid rgba(18,16,13,0.1)" }}>
@@ -264,7 +295,7 @@ export default function WeightTracker({
                   </tr>
                 </thead>
                 <tbody>
-                  {[...entries].reverse().map((e) => (
+                  {tablePageRows.map((e) => (
                     <tr key={e.date} style={{ borderBottom: "1px solid rgba(18,16,13,0.06)" }}>
                       <td className="py-2.5">
                         <span className="font-bold" style={{ color: e.date === today ? "#eb0915" : "#12100d" }}>
@@ -280,6 +311,33 @@ export default function WeightTracker({
                 </tbody>
               </table>
             </div>
+
+            {/* Phân trang (10 ngày/trang) */}
+            {tableTotalPages > 1 && (
+              <div className="flex items-center justify-center gap-3 px-5 py-3 border-t" style={{ borderColor: "rgba(18,16,13,0.08)" }}>
+                <button
+                  type="button"
+                  disabled={tableSafePage <= 1}
+                  onClick={() => setTablePage(tableSafePage - 1)}
+                  className="px-3 py-1.5 rounded-lg text-sm font-semibold"
+                  style={{ border: "1px solid rgba(18,16,13,0.12)", color: "rgba(18,16,13,0.6)", opacity: tableSafePage <= 1 ? 0.4 : 1 }}
+                >
+                  ← Trước
+                </button>
+                <span className="text-sm font-medium" style={{ color: "rgba(18,16,13,0.6)" }}>
+                  Trang {tableSafePage}/{tableTotalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={tableSafePage >= tableTotalPages}
+                  onClick={() => setTablePage(tableSafePage + 1)}
+                  className="px-3 py-1.5 rounded-lg text-sm font-semibold"
+                  style={{ border: "1px solid rgba(18,16,13,0.12)", color: "rgba(18,16,13,0.6)", opacity: tableSafePage >= tableTotalPages ? 0.4 : 1 }}
+                >
+                  Sau →
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
