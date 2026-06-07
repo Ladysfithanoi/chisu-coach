@@ -5,6 +5,7 @@ import AppHeader from "../_components/AppHeader";
 import DietForm from "../_components/DietForm";
 import WeightTracker from "../_components/WeightTracker";
 import FoodLogTracker from "../_components/FoodLogTracker";
+import FoodAlbum from "../_components/FoodAlbum";
 import TransformGallery from "../_components/TransformGallery";
 import type { WeightPoint } from "@/lib/weight";
 
@@ -26,7 +27,7 @@ export default function PTDashboard({
 }) {
   const [students, setStudents] = useState<StudentRow[]>(initialStudents);
   const [selected, setSelected] = useState<StudentRow | null>(null);
-  const [detailTab, setDetailTab] = useState<"plan" | "foodlog" | "weight" | "transform">("plan");
+  const [detailTab, setDetailTab] = useState<"plan" | "foodlog" | "album" | "weight" | "transform">("plan");
   const [studentWeights, setStudentWeights] = useState<WeightPoint[] | null>(null);
   const [weightError, setWeightError] = useState<string | null>(null);
 
@@ -177,6 +178,7 @@ export default function PTDashboard({
           <div className="flex gap-2 mb-6 flex-wrap">
             <TabButton active={detailTab === "plan"} onClick={() => setDetailTab("plan")}>Thực đơn</TabButton>
             <TabButton active={detailTab === "foodlog"} onClick={() => setDetailTab("foodlog")}>Nhật ký</TabButton>
+            <TabButton active={detailTab === "album"} onClick={() => setDetailTab("album")}>Album ăn uống</TabButton>
             <TabButton active={detailTab === "weight"} onClick={() => setDetailTab("weight")}>Cân nặng</TabButton>
             <TabButton active={detailTab === "transform"} onClick={() => setDetailTab("transform")}>Transform</TabButton>
           </div>
@@ -204,6 +206,7 @@ export default function PTDashboard({
           </div>
           {/* Nhật ký & Transform tự nạp dữ liệu theo studentId — mount khi mở tab */}
           {detailTab === "foodlog" && <FoodLogTracker key={selected.id} studentId={selected.id} readOnly />}
+          {detailTab === "album" && <FoodAlbum key={selected.id} studentId={selected.id} />}
           {detailTab === "transform" && <TransformGallery key={selected.id} studentId={selected.id} />}
         </div>
       </div>
