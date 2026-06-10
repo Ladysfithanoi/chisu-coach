@@ -41,6 +41,8 @@ export default function WeightTracker({
 }) {
   const [entries, setEntries] = useState<WeightPoint[]>(initialEntries);
   const [status, setStatus] = useState<RowStatus | null>(null);
+  // Thông báo lỗi cụ thể (validation / hết phiên / lỗi máy chủ) — hiện cạnh dấu "!"
+  const [errorMsg, setErrorMsg] = useState<string>("");
   // Modal bảng chi tiết các ngày + cân nặng (mở khi bấm vào biểu đồ)
   const [showTable, setShowTable] = useState(false);
   const [tablePage, setTablePage] = useState(1);
@@ -91,6 +93,7 @@ export default function WeightTracker({
     setInputDate(date);
     setInputWeight(undefined);
     setStatus(null);
+    setErrorMsg("");
   }
 
   async function commit() {
@@ -111,6 +114,7 @@ export default function WeightTracker({
 
     const weightKg = Number(weightStr.replace(",", "."));
     if (!Number.isFinite(weightKg) || weightKg <= 0 || weightKg > 500) {
+      setErrorMsg("Cân nặng phải lớn hơn 0 và tối đa 500 kg, vui lòng thử lại");
       setStatus("error");
       return;
     }
@@ -130,7 +134,17 @@ export default function WeightTracker({
         // Giữ lại ghi chú cũ (nếu có) — UI không còn ô nhập note nhưng không xoá dữ liệu cũ
         body: JSON.stringify({ date, weightKg, note: existing?.note ?? undefined, studentId }),
       });
-      if (!res.ok) { setStatus("error"); return; }
+      if (!res.ok) {
+        // Hiện đúng nguyên nhân: hết phiên (single-session) vs lỗi máy chủ
+        const data = await res.json().catch(() => null);
+        setErrorMsg(
+          res.status === 401
+            ? "Phiên đăng nhập đã hết hoặc bạn đã đăng nhập ở thiết bị khác. Vui lòng đăng nhập lại."
+            : (data?.error ?? "Không lưu được, vui lòng thử lại")
+        );
+        setStatus("error");
+        return;
+      }
       setEntries((prev) => {
         const rest = prev.filter((e) => e.date !== date);
         return [...rest, { date, weightKg, note: existing?.note ?? null }].sort((a, b) => (a.date < b.date ? -1 : 1));
@@ -139,6 +153,7 @@ export default function WeightTracker({
       setStatus("saved");
       setTimeout(() => setStatus(null), 1500);
     } catch {
+      setErrorMsg("Mất kết nối mạng, vui lòng thử lại");
       setStatus("error");
     }
   }
@@ -231,10 +246,13 @@ export default function WeightTracker({
               aria-label="Chọn ngày cân"
             />
           </div>
+          {/* type="text" + inputMode="decimal": bàn phím số tiếng Việt dùng dấu phẩy,
+              type="number" sẽ coi "70,5" là không hợp lệ và trả value rỗng → không lưu được.
+              Chỉ giữ chữ số và một dấu phẩy/chấm. */}
           <input
-            type="number" inputMode="decimal" step="0.1" placeholder="kg"
+            type="text" inputMode="decimal" placeholder="kg"
             value={weightValue}
-            onChange={(e) => setInputWeight(e.target.value)}
+            onChange={(e) => setInputWeight(e.target.value.replace(/[^\d.,]/g, ""))}
             onKeyDown={(e) => { if (e.key === "Enter") commit(); }}
             className="dp-input flex-1"
           />
@@ -254,7 +272,7 @@ export default function WeightTracker({
           <p className="text-sm mt-2 font-medium" style={{ color: "#16a34a" }}>✓ Đã lưu</p>
         )}
         {status === "error" && (
-          <p className="text-sm mt-2 font-medium" style={{ color: "#eb0915" }}>! Cân nặng phải lớn hơn 0 và tối đa 500 kg, vui lòng thử lại</p>
+          <p className="text-sm mt-2 font-medium" style={{ color: "#eb0915" }}>! {errorMsg}</p>
         )}
       </div>
 
