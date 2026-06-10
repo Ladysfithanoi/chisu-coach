@@ -33,8 +33,6 @@ export const FOODS: FoodItem[] = [
   { name: 'Mùi ta (Ngò rí)', nameEn: 'Coriander / Cilantro', calories: 23, protein: 2.1, fat: 0.5, carbs: 3.7, fiber: 2.8, tag: 'veggie' },
   { name: 'Thì là', nameEn: 'Dill', calories: 43, protein: 3.5, fat: 1.1, carbs: 7.0, fiber: 2.1, tag: 'veggie' },
   { name: 'Rau răm', nameEn: 'Vietnamese coriander', calories: 30, protein: 4.7, fat: 0.5, carbs: 2.8, fiber: 2.5, tag: 'veggie' },
-  { name: 'Rau mồng tơi', nameEn: 'Malabar spinach', calories: 14, protein: 2.0, fat: 0.1, carbs: 1.4, fiber: 1.5, tag: 'veggie' },
-  { name: 'Rau đay', nameEn: 'Jute leaves', calories: 25, protein: 2.8, fat: 0.3, carbs: 3.0, fiber: 1.5, tag: 'veggie' },
   { name: 'Rau khoai lang', nameEn: 'Sweet potato leaves', calories: 22, protein: 2.2, fat: 0.2, carbs: 2.8, fiber: 2.0, tag: 'veggie' },
   { name: 'Rau ngót (Bồ ngót)', nameEn: 'Katuk / Star gooseberry leaves', calories: 35, protein: 5.3, fat: 0.4, carbs: 3.4, fiber: 2.5, tag: 'veggie' },
   { name: 'Rau bí (Ngọn bí ngô)', nameEn: 'Pumpkin tendrils / Pumpkin leaves', calories: 18, protein: 2.5, fat: 0.2, carbs: 2.3, fiber: 2.1, tag: 'veggie' },
