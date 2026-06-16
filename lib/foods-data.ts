@@ -10,6 +10,10 @@ export interface FoodItem {
   fat: number;      // per 100g
   carbs: number;    // per 100g
   fiber?: number;   // per 100g
+  // Một số món tính theo đơn vị tự nhiên (vd: trứng → "quả"). gramsPerUnit để quy
+  // đổi macro/100g sang 1 đơn vị. Bỏ trống = nhập theo gram như bình thường.
+  unit?: string;
+  gramsPerUnit?: number;
   tag: FoodTag;
 }
 
