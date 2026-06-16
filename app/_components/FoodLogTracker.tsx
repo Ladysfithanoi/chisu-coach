@@ -258,19 +258,23 @@ export default function FoodLogTracker({
 
     try {
       // Upload ảnh trước (nếu có) để lấy tham chiếu Drive.
+      // Lỗi upload (vd: Drive hết hạn token / chưa cấu hình) KHÔNG được chặn việc
+      // ghi nhật ký — vẫn lưu món, chỉ là không kèm ảnh. Mất ảnh còn hơn mất cả bữa.
       let photoUrl: string | undefined;
+      let photoFailed = false;
       if (draft.source === "photo" && draft.imageBase64) {
-        const up = await fetch("/api/upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageBase64: draft.imageBase64, mimeType: draft.mimeType, studentId }),
-        });
-        const upData = await up.json();
-        if (!up.ok) {
-          setDraft((d) => (d ? { ...d, saving: false, error: upData.error || "Upload ảnh thất bại" } : d));
-          return;
+        try {
+          const up = await fetch("/api/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageBase64: draft.imageBase64, mimeType: draft.mimeType, studentId }),
+          });
+          const upData = await up.json();
+          if (up.ok) photoUrl = upData.photoUrl;
+          else photoFailed = true;
+        } catch {
+          photoFailed = true;
         }
-        photoUrl = upData.photoUrl;
       }
 
       const res = await fetch("/api/foodlog", {
@@ -295,6 +299,9 @@ export default function FoodLogTracker({
       }
       setLogs((prev) => [data.log as FoodLog, ...prev]);
       setDraft(null);
+      if (photoFailed) {
+        alert("Đã lưu món vào nhật ký, nhưng không tải được ảnh lên (lỗi kết nối Drive). Món vẫn được ghi nhận, chỉ thiếu ảnh.");
+      }
     } catch {
       setDraft((d) => (d ? { ...d, saving: false, error: "Lỗi mạng" } : d));
     }
