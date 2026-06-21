@@ -15,7 +15,7 @@ export interface StudentRow {
   email: string;
   medicalConditions: string | null;
   createdAt: string;
-  mealPlans: { id: string; label: string | null; calories: number; updatedAt: string }[];
+  mealPlans: { id: string; label: string | null; calories: number; protein: number; fat: number; carbs: number; updatedAt: string }[];
 }
 
 export default function PTDashboard({
@@ -208,7 +208,23 @@ export default function PTDashboard({
             )}
           </div>
           {/* Nhật ký & Transform tự nạp dữ liệu theo studentId — mount khi mở tab */}
-          {detailTab === "foodlog" && <FoodLogTracker key={selected.id} studentId={selected.id} readOnly />}
+          {detailTab === "foodlog" && (
+            <FoodLogTracker
+              key={selected.id}
+              studentId={selected.id}
+              target={
+                selected.mealPlans.length
+                  ? {
+                      calories: selected.mealPlans[0].calories,
+                      protein: selected.mealPlans[0].protein,
+                      fat: selected.mealPlans[0].fat,
+                      carbs: selected.mealPlans[0].carbs,
+                    }
+                  : null
+              }
+              readOnly
+            />
+          )}
           {detailTab === "album" && <FoodAlbum key={selected.id} studentId={selected.id} />}
           {detailTab === "transform" && <TransformGallery key={selected.id} studentId={selected.id} />}
         </div>

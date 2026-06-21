@@ -20,7 +20,7 @@ export async function GET() {
       createdAt: true,
       mealPlans: {
         where: { isActive: true, source: "PT" },
-        select: { id: true, label: true, calories: true, updatedAt: true },
+        select: { id: true, label: true, calories: true, protein: true, fat: true, carbs: true, updatedAt: true },
         take: 1,
       },
     },

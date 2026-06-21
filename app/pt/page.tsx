@@ -19,7 +19,7 @@ export default async function PTPage() {
       createdAt: true,
       mealPlans: {
         where: { isActive: true, source: "PT" },
-        select: { id: true, label: true, calories: true, updatedAt: true },
+        select: { id: true, label: true, calories: true, protein: true, fat: true, carbs: true, updatedAt: true },
         take: 1,
       },
     },
@@ -36,6 +36,9 @@ export default async function PTPage() {
       id: p.id,
       label: p.label,
       calories: p.calories,
+      protein: p.protein,
+      fat: p.fat,
+      carbs: p.carbs,
       updatedAt: p.updatedAt.toISOString(),
     })),
   }));
